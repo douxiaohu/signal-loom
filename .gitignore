@@ -1,0 +1,15 @@
+.env
+data/
+config/groups.yaml
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.venv/
+venv/
+node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+.DS_Store
+.superpowers/

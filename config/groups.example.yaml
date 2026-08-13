@@ -1,0 +1,10 @@
+groups:
+  - source: "https://t.me/zaihuapd"
+    name: "zaihuapd"
+
+  - source: "https://t.me/s/tnews365"
+    name: "竹新社"
+
+  # Bot API source example. The bot must be in this group/channel.
+  # - chat_id: -1001234567890
+  #   name: "Example Telegram Group"
