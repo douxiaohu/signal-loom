@@ -83,7 +83,7 @@ def load_config(
     env_path: str = ".env",
     groups_path: Optional[str] = None,
     *,
-    require_token: bool = True,
+    require_token: bool = False,
 ) -> AppConfig:
     env_values = load_env_file(env_path)
     merged = {**env_values, **os.environ}

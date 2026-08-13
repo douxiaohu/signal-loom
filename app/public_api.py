@@ -13,6 +13,7 @@ from .media_cache import (
     MediaNotFoundError,
     MediaURLRejectedError,
 )
+from .domain.feed.service import FeedService
 from .storage import SQLiteStorage
 
 
@@ -56,17 +57,16 @@ async def list_public_messages(
     ),
 ):
     storage: SQLiteStorage = request.app.state.storage
-    allowed = storage.public_chat_ids()
-    if chat_id is not None and int(chat_id) not in allowed:
+    try:
+        page = FeedService(storage).public_page(
+            source_id=chat_id,
+            query=query,
+            media=media,
+            cursor=cursor,
+            limit=limit,
+        )
+    except KeyError:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Source not found")
-    page = storage.list_messages_page(
-        chat_id=chat_id,
-        limit=limit,
-        cursor=cursor,
-        query=query,
-        media=media,
-        allowed_chat_ids=allowed,
-    )
     payload = {
         "items": [
             message_to_api_dict(message, media_base_path="/api/public/media")

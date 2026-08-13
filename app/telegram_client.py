@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, Optional
 from urllib import error, request
 
+from .ingest.ports import NormalizedItem
 from .storage import SQLiteStorage, utc_now_iso
 
 
@@ -122,13 +123,29 @@ class TelegramPoller:
         source_chat_ids: Iterable[int] = (),
         poll_timeout: int = 50,
         retry_delay: float = 5.0,
+        feed_service=None,
+        resolve_chat_ids=None,
     ) -> None:
+        from .domain.feed.service import FeedService
+
         self.client = client
         self.storage = storage
         self.poll_timeout = poll_timeout
         self.retry_delay = retry_delay
-        self.source_chat_ids = tuple(dict.fromkeys(int(chat_id) for chat_id in source_chat_ids))
+        self._static_chat_ids = tuple(dict.fromkeys(int(chat_id) for chat_id in source_chat_ids))
+        self.feed_service = feed_service or FeedService(storage)
+        self._resolve_chat_ids = resolve_chat_ids
         self.status = PollerStatus()
+
+    @property
+    def source_chat_ids(self) -> tuple[int, ...]:
+        if self._resolve_chat_ids is not None:
+            return tuple(dict.fromkeys(int(chat_id) for chat_id in self._resolve_chat_ids()))
+        return self._static_chat_ids
+
+    @source_chat_ids.setter
+    def source_chat_ids(self, value: Iterable[int]) -> None:
+        self._static_chat_ids = tuple(dict.fromkeys(int(chat_id) for chat_id in value))
 
     async def run(self, stop_event: asyncio.Event) -> None:
         raw_offset = self.storage.get_state(OFFSET_STATE_KEY)
@@ -140,8 +157,9 @@ class TelegramPoller:
         try:
             while not stop_event.is_set():
                 started_at = utc_now_iso()
-                fetched_counts = {chat_id: 0 for chat_id in self.source_chat_ids}
-                saved_counts = {chat_id: 0 for chat_id in self.source_chat_ids}
+                watched = self.source_chat_ids
+                fetched_counts = {chat_id: 0 for chat_id in watched}
+                saved_counts = {chat_id: 0 for chat_id in watched}
                 try:
                     self.status.last_poll_at = utc_now_iso()
                     updates = await self.client.get_updates(offset=offset, timeout=self.poll_timeout)
@@ -151,7 +169,8 @@ class TelegramPoller:
                         if message is not None:
                             if message.chat_id in fetched_counts:
                                 fetched_counts[message.chat_id] += 1
-                            if self.storage.save_message(message):
+                            result = self.feed_service.ingest(_message_to_item(message))
+                            if result.inserted:
                                 self.status.saved_messages += 1
                                 self.status.last_saved_at = utc_now_iso()
                                 if message.chat_id in saved_counts:
@@ -162,7 +181,7 @@ class TelegramPoller:
                         self.status.configured_offset = offset
                     self.status.last_error = None
                     finished_at = utc_now_iso()
-                    for chat_id in self.source_chat_ids:
+                    for chat_id in watched:
                         self.storage.record_source_run(
                             chat_id=chat_id,
                             source="telegram_bot",
@@ -178,7 +197,7 @@ class TelegramPoller:
                     LOGGER.exception("Telegram polling failed")
                     self.status.last_error = str(exc)
                     finished_at = utc_now_iso()
-                    for chat_id in self.source_chat_ids:
+                    for chat_id in watched:
                         self.storage.record_source_run(
                             chat_id=chat_id,
                             source="telegram_bot",
@@ -192,6 +211,21 @@ class TelegramPoller:
         finally:
             self.status.running = False
             LOGGER.info("Telegram poller stopped")
+
+
+def _message_to_item(message: TelegramMessage) -> NormalizedItem:
+    raw = dict(message.raw or {})
+    return NormalizedItem(
+        source_id=message.chat_id,
+        external_id=str(message.message_id),
+        occurred_at=message.message_time,
+        author=message.sender_name,
+        title=message.chat_title,
+        content=message.content,
+        media_type=message.media_type,
+        raw=raw,
+        permalink=raw.get("source_url") if isinstance(raw.get("source_url"), str) else None,
+    )
 
 
 def extract_telegram_message(update: Dict[str, Any]) -> Optional[TelegramMessage]:

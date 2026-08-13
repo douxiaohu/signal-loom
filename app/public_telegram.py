@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional
 from urllib import error, request
 
 from .config import GroupConfig
+from .domain.feed.service import FeedService
+from .ingest.ports import NormalizedItem
 from .media_cache import MediaCache, MediaCacheError
 from .source_utils import normalize_telegram_public_source
 from .storage import SQLiteStorage, StoredSource, media_urls_from_raw_json, utc_now_iso
@@ -43,10 +45,12 @@ class PublicTelegramCrawler:
         *,
         media_cache: Optional[MediaCache] = None,
         timeout: int = 20,
+        feed_service: Optional[FeedService] = None,
     ) -> None:
         self.storage = storage
         self.media_cache = media_cache
         self.timeout = int(timeout)
+        self.feed_service = feed_service or FeedService(storage)
 
     def crawl_group(self, group: GroupConfig) -> CrawlResult:
         if not group.source:
@@ -69,9 +73,13 @@ class PublicTelegramCrawler:
             posts = fetch_public_posts(source, chat_id, name, timeout=self.timeout)
             saved = 0
             for post in posts:
-                if self.storage.save_message(post):
+                result = self.feed_service.ingest(_message_to_item(post))
+                if result.inserted:
                     saved += 1
-                self._warm_media_cache(post)
+                if result.persisted and result.item_id is not None:
+                    stored = self.feed_service.get(result.item_id)
+                    if stored is not None:
+                        self._warm_media_cache(stored, post)
             return CrawlResult(source=source, chat_id=chat_id, fetched=len(posts), saved=saved)
         except Exception as exc:  # noqa: BLE001 - source failures should not stop forwarding other groups.
             LOGGER.exception("Failed to crawl Telegram public source %s", source)
@@ -83,11 +91,17 @@ class PublicTelegramCrawler:
                 error=str(exc),
             )
 
-    def _warm_media_cache(self, post: TelegramMessage) -> None:
-        if not self.media_cache or not post.media_type:
+    def _warm_media_cache(self, message, post: TelegramMessage | None = None) -> None:
+        if not self.media_cache:
             return
-        message = self.storage.get_message_by_telegram_id(post.chat_id, post.message_id)
-        if message is None:
+        if post is None and not hasattr(message, "raw_json"):
+            stored = self.storage.get_message_by_telegram_id(message.chat_id, message.message_id)
+            if stored is None:
+                return
+            post = message
+            message = stored
+        media_type = post.media_type if post is not None else getattr(message, "media_type", None)
+        if not media_type:
             return
         media_urls = media_urls_from_raw_json(message.raw_json)
         for index, _ in enumerate(media_urls):
@@ -96,11 +110,26 @@ class PublicTelegramCrawler:
             except MediaCacheError as exc:
                 LOGGER.warning(
                     "Failed to warm media cache for chat_id=%s message_id=%s index=%s: %s",
-                    post.chat_id,
-                    post.message_id,
+                    getattr(message, "chat_id", None),
+                    getattr(message, "message_id", None),
                     index,
                     exc,
                 )
+
+
+def _message_to_item(post: TelegramMessage) -> NormalizedItem:
+    raw = dict(post.raw or {})
+    return NormalizedItem(
+        source_id=post.chat_id,
+        external_id=str(post.message_id),
+        occurred_at=post.message_time,
+        author=post.sender_name,
+        title=post.chat_title,
+        content=post.content,
+        media_type=post.media_type,
+        raw=raw,
+        permalink=raw.get("source_url") if isinstance(raw.get("source_url"), str) else None,
+    )
 
 
 def fetch_public_posts(

@@ -10,7 +10,7 @@ if [[ ! -f .env ]]; then
 fi
 
 if [[ ! -f config/groups.yaml ]]; then
-  echo "Missing config/groups.yaml. Copy config/groups.example.yaml and fill webhook_url first." >&2
+  echo "Missing config/groups.yaml. Copy config/groups.example.yaml first." >&2
   exit 1
 fi
 

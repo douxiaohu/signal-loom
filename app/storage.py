@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence
 from zoneinfo import ZoneInfo
 
+from .persistence.sqlite.connection import ConnectionFactory, sqlite_path_from_url
 from .source_utils import canonical_telegram_public_url, public_source_chat_id
 
 
@@ -41,6 +42,13 @@ class StoredSource:
     public_visible: bool
     created_at: str
     updated_at: str
+    adapter: str = "telegram_public"
+    locator: str = ""
+    config_json: str = "{}"
+
+    @property
+    def source_id(self) -> int:
+        return self.chat_id
 
 
 @dataclass(frozen=True)
@@ -53,7 +61,8 @@ class MessagePage:
 class SQLiteStorage:
     def __init__(self, database_url: str, *, timezone_name: str = "Asia/Shanghai") -> None:
         self.database_url = database_url
-        self.database_path = sqlite_path_from_url(database_url)
+        self.db = ConnectionFactory(database_url)
+        self.database_path = self.db.database_path
         self.timezone_name = timezone_name
         self._github_fts_available = False
 
@@ -295,6 +304,15 @@ class SQLiteStorage:
             _ensure_column(conn, "github_repositories", "ai_problem_zh", "TEXT NOT NULL DEFAULT ''")
             _ensure_column(conn, "github_repositories", "ai_model", "TEXT NOT NULL DEFAULT ''")
             _ensure_column(conn, "github_repositories", "ai_generated_at", "TEXT")
+            _ensure_column(conn, "sources", "adapter", "TEXT NOT NULL DEFAULT ''")
+            _ensure_column(conn, "sources", "locator", "TEXT NOT NULL DEFAULT ''")
+            _ensure_column(conn, "sources", "config_json", "TEXT NOT NULL DEFAULT '{}'")
+            conn.execute(
+                "UPDATE sources SET adapter = source_type WHERE adapter = '' OR adapter IS NULL"
+            )
+            conn.execute(
+                "UPDATE sources SET locator = source_url WHERE locator = '' OR locator IS NULL"
+            )
             now = utc_now_iso()
             conn.execute(
                 """
@@ -391,22 +409,44 @@ class SQLiteStorage:
         name: str,
         source_url: str,
         public_visible: bool = False,
+        adapter: str = "telegram_public",
     ) -> StoredSource:
-        normalized = canonical_telegram_public_url(source_url)
         clean_name = str(name or "").strip()
         if not clean_name:
             raise ValueError("source name is required")
-        chat_id = public_source_chat_id(normalized)
+        adapter_key = str(adapter or "telegram_public").strip() or "telegram_public"
+        if adapter_key == "telegram_public":
+            locator = canonical_telegram_public_url(source_url)
+            chat_id = public_source_chat_id(locator)
+        elif adapter_key == "telegram_bot":
+            try:
+                chat_id = int(str(source_url).strip())
+            except (TypeError, ValueError) as exc:
+                raise ValueError("telegram_bot locator must be a numeric chat_id") from exc
+            locator = str(chat_id)
+        else:
+            raise ValueError(f"unknown source adapter: {adapter_key}")
         now = utc_now_iso()
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO sources(
                     chat_id, name, source_url, source_type,
-                    enabled, public_visible, created_at, updated_at
-                ) VALUES (?, ?, ?, 'telegram_public', 1, ?, ?, ?)
+                    enabled, public_visible, created_at, updated_at,
+                    adapter, locator, config_json
+                ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, '{}')
                 """,
-                (chat_id, clean_name, normalized, int(public_visible), now, now),
+                (
+                    chat_id,
+                    clean_name,
+                    locator,
+                    adapter_key,
+                    int(public_visible),
+                    now,
+                    now,
+                    adapter_key,
+                    locator,
+                ),
             )
         source = self.get_source(chat_id)
         if source is None:
@@ -1646,19 +1686,8 @@ class SQLiteStorage:
                 (int(rule["id"]), int(message_db_id), utc_now_iso()),
             )
 
-    def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.database_path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        return conn
-
-
-def sqlite_path_from_url(database_url: str) -> str:
-    if database_url in {":memory:", "sqlite:///:memory:"}:
-        return ":memory:"
-    if database_url.startswith("sqlite:///"):
-        return database_url[len("sqlite:///") :]
-    raise ValueError("Only sqlite:/// database URLs are supported")
+    def _connect(self):
+        return self.db.connect()
 
 
 def _parse_datetime(value: str) -> datetime:
@@ -1917,15 +1946,23 @@ def row_to_message(row: sqlite3.Row) -> StoredMessage:
 
 
 def row_to_source(row: sqlite3.Row) -> StoredSource:
+    keys = set(row.keys())
+    source_type = str(row["source_type"] or "telegram_public")
+    adapter = str(row["adapter"] or "") if "adapter" in keys else ""
+    locator = str(row["locator"] or "") if "locator" in keys else ""
+    config_json = str(row["config_json"] or "{}") if "config_json" in keys else "{}"
     return StoredSource(
         chat_id=int(row["chat_id"]),
         name=str(row["name"]),
         source_url=str(row["source_url"]),
-        source_type=str(row["source_type"]),
+        source_type=adapter or source_type,
         enabled=bool(row["enabled"]),
         public_visible=bool(row["public_visible"]),
         created_at=str(row["created_at"]),
         updated_at=str(row["updated_at"]),
+        adapter=adapter or source_type or "telegram_public",
+        locator=locator or str(row["source_url"]),
+        config_json=config_json or "{}",
     )
 
 

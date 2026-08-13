@@ -67,6 +67,21 @@ class SourceStorageTests(unittest.TestCase):
         self.assertFalse(updated.enabled)
         self.assertFalse(updated.public_visible)
 
+    def test_seed_includes_telegram_bot_groups(self):
+        groups = [
+            GroupConfig(
+                chat_id=-1001234567890,
+                name="Ops",
+                source_type="telegram_bot",
+            )
+        ]
+        self.assertEqual(seed_sources_from_groups(self.storage, groups), 1)
+        source = self.storage.get_source(-1001234567890)
+        self.assertIsNotNone(source)
+        self.assertEqual(source.adapter, "telegram_bot")
+        self.assertEqual(source.locator, "-1001234567890")
+        self.assertFalse(source.public_visible)
+
     def test_rejects_non_telegram_public_source(self):
         for value in ("", "https://example.com/channel", "https://t.me/bad-name", "../private"):
             with self.subTest(value=value):

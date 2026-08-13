@@ -43,7 +43,6 @@ export async function fetchGroups(signal?: AbortSignal) {
     enabled: source.enabled ?? true,
     public_visible: source.public_visible ?? false,
     message_count: source.message_count || 0,
-    pending_count: 0,
     last_message_time: source.last_message_time || null,
     health_status: source.health_status,
     last_run_at: source.last_run_at || null,

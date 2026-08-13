@@ -97,6 +97,24 @@ class AdminSourceApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_admin_can_create_telegram_bot_source_and_rejects_unknown_adapter(self):
+        self._login()
+        created = self.client.post(
+            "/api/admin/sources",
+            headers={"Origin": "http://testserver"},
+            json={"name": "Ops", "source_url": "-1001234567890", "adapter": "telegram_bot"},
+        )
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.json()["adapter"], "telegram_bot")
+        self.assertEqual(created.json()["chat_id"], -1001234567890)
+
+        unknown = self.client.post(
+            "/api/admin/sources",
+            headers={"Origin": "http://testserver"},
+            json={"name": "RSS", "source_url": "https://example.com/feed", "adapter": "rss"},
+        )
+        self.assertEqual(unknown.status_code, 422)
+
 
 if __name__ == "__main__":
     unittest.main()

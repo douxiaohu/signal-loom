@@ -105,6 +105,19 @@ class PublicApiTests(unittest.TestCase):
         self.assertEqual(selected.status_code, 404)
         self.assertEqual(media.status_code, 404)
 
+    def test_orphan_chat_id_is_admin_visible_and_public_hidden(self):
+        self._save_message(-999001, "orphan-row")
+        self.assertEqual(self.client.post("/api/auth/login", json={"api_key": "correct-key"}).status_code, 200)
+
+        admin = self.client.get("/api/admin/messages?chat_id=-999001")
+        public = self.client.get("/api/public/messages?chat_id=-999001")
+        public_all = self.client.get("/api/public/messages")
+
+        self.assertEqual(admin.status_code, 200)
+        self.assertEqual([item["content"] for item in admin.json()["items"]], ["orphan-row"])
+        self.assertEqual(public.status_code, 404)
+        self.assertNotIn("orphan-row", public_all.text)
+
 
 if __name__ == "__main__":
     unittest.main()

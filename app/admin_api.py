@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from .api_common import message_to_api_dict
 from .media_cache import MediaCache, MediaCacheError, MediaNotFoundError, MediaURLRejectedError
-from .scheduler import sanitize_error_fields
+from .domain.feed.service import FeedService
+from .http.errors import sanitize_error_fields
 from .security import require_same_origin, require_session
 from .storage import SQLiteStorage, StoredSource
 
@@ -25,6 +26,7 @@ router = APIRouter(
 class SourceCreatePayload(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     source_url: str = Field(min_length=1, max_length=300)
+    adapter: str = Field(default="telegram_public", max_length=40)
 
 
 class SourcePatchPayload(BaseModel):
@@ -72,7 +74,8 @@ def source_to_dict(storage: SQLiteStorage, source: StoredSource, *, stale_after_
             "chat_id": source.chat_id,
             "name": source.name,
             "source_url": source.source_url,
-            "source_type": source.source_type,
+            "source_type": source.adapter or source.source_type,
+            "adapter": source.adapter or source.source_type,
             "enabled": source.enabled,
             "public_visible": source.public_visible,
             "created_at": source.created_at,
@@ -98,8 +101,22 @@ async def list_sources(request: Request):
 )
 async def create_source(request: Request, payload: SourceCreatePayload):
     storage: SQLiteStorage = request.app.state.storage
+    source_service = getattr(request.app.state, "source_service", None)
     try:
-        source = storage.create_source(name=payload.name, source_url=payload.source_url)
+        if source_service is not None:
+            source = source_service.create(
+                name=payload.name,
+                locator=payload.source_url,
+                adapter=payload.adapter or "telegram_public",
+            )
+        else:
+            source = storage.create_source(
+                name=payload.name,
+                source_url=payload.source_url,
+                adapter=payload.adapter or "telegram_public",
+            )
+    except KeyError as exc:
+        raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except sqlite3.IntegrityError as exc:
@@ -137,7 +154,13 @@ async def list_admin_messages(
     media: str = Query(default="all"),
 ):
     storage: SQLiteStorage = request.app.state.storage
-    page = storage.list_messages_page(chat_id=chat_id, limit=limit, cursor=cursor, query=query, media=media)
+    page = FeedService(storage).admin_page(
+        source_id=chat_id,
+        query=query,
+        media=media,
+        cursor=cursor,
+        limit=limit,
+    )
     return {
         "items": [message_to_api_dict(message, media_base_path="/api/admin/media") for message in page.items],
         "has_more": page.has_more,

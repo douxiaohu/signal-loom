@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Query, Request
 
 from .api_common import etag_json_response
+from .domain.insights.ports import RankQuery
 from .github_service import PERIOD_DAYS, build_github_ranking
 from .security import require_same_origin, require_session
 from .storage import SQLiteStorage
@@ -27,16 +28,31 @@ async def github_rankings(
     per_page: int = Query(default=24, ge=1, le=50),
 ):
     storage: SQLiteStorage = request.app.state.storage
-    payload = build_github_ranking(
-        storage,
-        period=period,
+    product = getattr(request.app.state, "github_product", None)
+    rank_query = RankQuery(
+        period=period,  # type: ignore[arg-type]
         language=language,
         query=query,
-        sort=sort,
+        sort=sort,  # type: ignore[arg-type]
         page=page,
         per_page=per_page,
     )
-    run = storage.get_latest_github_collection_run()
+    if product is not None:
+        payload = product.rank(rank_query)
+        run = product.latest_run()
+        languages = product.languages()
+    else:
+        payload = build_github_ranking(
+            storage,
+            period=period,
+            language=language,
+            query=query,
+            sort=sort,
+            page=page,
+            per_page=per_page,
+        )
+        run = storage.get_latest_github_collection_run()
+        languages = storage.list_github_languages()
     collector = getattr(request.app.state, "github_collector", None)
     last_updated = str(run.get("finished_at") or "") if run else None
     next_refresh = None
@@ -50,7 +66,7 @@ async def github_rankings(
             next_refresh = None
     payload.update(
         {
-            "languages": storage.list_github_languages(),
+            "languages": languages,
             "collection": {
                 "status": str(run.get("status") or "never") if run else "never",
                 "last_updated": last_updated,
@@ -69,5 +85,8 @@ async def github_rankings(
     dependencies=[Depends(require_session), Depends(require_same_origin)],
 )
 async def refresh_github_repositories(request: Request):
+    product = getattr(request.app.state, "github_product", None)
+    if product is not None:
+        return await product.refresh()
     collector = request.app.state.github_collector
     return await collector.refresh()

@@ -17,8 +17,9 @@ export type Group = SourceHealth & {
   source_type: string;
   enabled?: boolean;
   public_visible?: boolean;
+  adapter?: string;
   message_count: number;
-  pending_count: number;
+  pending_count?: number;
   last_message_time: string | null;
 };
 
@@ -68,41 +69,6 @@ export type OperationSummary = {
   unhealthy_sources: Array<SourceHealth & { name?: string }>;
   public_source_count?: number;
   source_count?: number;
-};
-
-export type LegacyDelivery = {
-  id: number;
-  group_name: string;
-  success: number | boolean;
-  error: string | null;
-  sent_at: string;
-};
-
-export type Delivery = {
-  id: number;
-  chat_id: number;
-  group_name: string;
-  channel: string;
-  status: "pending" | "in_progress" | "failed" | "succeeded";
-  next_retry_at: string | null;
-  maybe_duplicate: boolean;
-  attempt_count: number;
-  item_count: number;
-  latest_error?: string | null;
-  attempts?: Array<{
-    attempt_no: number;
-    status: string;
-    error: string | null;
-    chunk_count: number;
-    completed_chunks: number;
-    chunk_results: Array<{
-      index: number;
-      status: "pending" | "succeeded" | "failed" | "not_attempted";
-      error: string | null;
-    }>;
-  }>;
-  created_at: string;
-  updated_at: string;
 };
 
 export type AlertRule = {

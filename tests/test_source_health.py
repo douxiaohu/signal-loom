@@ -4,24 +4,19 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from app.config import AppConfig, GroupConfig
+from app.config import AppConfig
 from app.main import app
 from app.public_telegram import CrawlResult
-from app.scheduler import Forwarder
+from app.scheduler import SourceCollector
 from app.security import SessionSigner
 from app.storage import SQLiteStorage
-
-
-class _WeCom:
-    def send_text(self, webhook_url, content):
-        return None
 
 
 class _Crawler:
     def __init__(self, result):
         self.result = result
 
-    def crawl_group(self, group):
+    def crawl_source(self, source):
         return self.result
 
 
@@ -85,35 +80,28 @@ class SourceHealthTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(failed["last_success_at"], "2026-07-13T08:20:00+00:00")
         self.assertEqual(failed["last_error"], "upstream unavailable")
 
-    async def test_forwarder_persists_every_crawl_result(self):
-        config = self._config()
+    async def test_collector_persists_every_crawl_result(self):
+        source = self.storage.create_source(name="Example", source_url="https://t.me/example")
         crawler = _Crawler(
             CrawlResult(
                 source="https://t.me/example",
-                chat_id=-1001,
+                chat_id=source.chat_id,
                 fetched=7,
                 saved=2,
                 error=None,
             )
         )
-        forwarder = Forwarder(
-            config=config,
-            storage=self.storage,
-            wecom_client=_WeCom(),
-            public_crawler=crawler,
-        )
-
-        results = await forwarder.crawl_public_sources()
-
+        collector = SourceCollector(storage=self.storage, crawler=crawler)
+        results = await collector.crawl_public_sources()
         self.assertEqual(results[0]["saved"], 2)
-        health = self.storage.get_source_health(-1001, stale_after_seconds=900)
+        health = self.storage.get_source_health(source.chat_id, stale_after_seconds=900)
         self.assertEqual(health["health_status"], "healthy")
         self.assertEqual(health["fetched_count"], 7)
 
-    def test_groups_and_operations_summary_expose_health_without_payload_preview(self):
-        config = self._config()
+    def test_admin_operations_summary_exposes_health_without_delivery_ledger(self):
+        source = self.storage.create_source(name="Example", source_url="https://t.me/example")
         self.storage.record_source_run(
-            chat_id=-1001,
+            chat_id=source.chat_id,
             source="https://t.me/example",
             started_at="2026-07-13T08:00:00+00:00",
             finished_at="2026-07-13T08:00:05+00:00",
@@ -121,28 +109,22 @@ class SourceHealthTests(unittest.IsolatedAsyncioTestCase):
             saved_count=0,
             error="timeout",
         )
-        self.storage.log_forward(
-            chat_id=-1001,
-            group_name="Example",
-            message_count=4,
-            success=False,
-            error="send failed",
-            payload_preview="sensitive message body",
-        )
+        config = self._config()
         app.state.config = config
         app.state.storage = self.storage
         app.state.session_signer = SessionSigner(config.session_secret, ttl_seconds=3600)
         client = TestClient(app, base_url="http://testserver")
         try:
             self.assertEqual(client.post("/api/auth/login", json={"api_key": "key"}).status_code, 200)
-            groups = client.get("/api/groups").json()["groups"]
+            groups = client.get("/api/admin/sources").json()["items"]
             self.assertEqual(groups[0]["health_status"], "error")
 
-            summary = client.get("/api/operations/summary")
+            summary = client.get("/api/admin/operations/summary")
             self.assertEqual(summary.status_code, 200)
             body = summary.json()
-            self.assertEqual(body["unhealthy_sources"][0]["chat_id"], -1001)
-            self.assertNotIn("payload_preview", body["recent_deliveries"][0])
+            self.assertEqual(body["unhealthy_sources"][0]["chat_id"], source.chat_id)
+            self.assertNotIn("recent_deliveries", body)
+            self.assertNotIn("deliveries", body)
         finally:
             client.close()
 
@@ -153,14 +135,7 @@ class SourceHealthTests(unittest.IsolatedAsyncioTestCase):
             timezone="Asia/Shanghai",
             forward_cron="0 * * * *",
             groups_config_path="config/groups.yaml",
-            groups={
-                -1001: GroupConfig(
-                    chat_id=-1001,
-                    name="Example",
-                    source="https://t.me/example",
-                    source_type="telegram_public",
-                )
-            },
+            groups={},
             admin_api_key="key",
             session_secret="session-secret-at-least-32-bytes-long",
             session_cookie_secure=False,

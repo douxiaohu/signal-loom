@@ -63,6 +63,12 @@ class MediaCache:
         self.timeout = int(timeout)
         self.max_bytes = int(max_bytes)
 
+    def warm(self, message: StoredMessage) -> None:
+        if not message.media_type:
+            return
+        for index, _ in enumerate(media_urls_from_raw_json(message.raw_json)):
+            self.get(message, index, variant="original")
+
     def get(
         self,
         message: StoredMessage,
