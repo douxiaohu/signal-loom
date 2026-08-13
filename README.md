@@ -76,7 +76,7 @@ Linux 服务器请把 `APP_UID` / `APP_GID` 设为部署用户的 `id -u` / `id 
 ### 1. 获取代码
 
 ```bash
-git clone git@github.com:<你的用户名>/telegram-github-radar.git
+git clone https://github.com/douxiaohu/telegram-github-radar.git
 cd telegram-github-radar
 ```
 
