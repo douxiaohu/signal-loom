@@ -83,7 +83,7 @@ test("public platform is keyless, responsive, keyboard reachable and WebGL-free"
   await installApi(page);
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Telegram 频道资讯监测平台" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "频道资讯" })).toBeVisible();
   await expect(page.getByText("供应链组件出现高危漏洞，请优先确认受影响版本。")) .toBeVisible();
   await expect(page.getByLabel("管理密钥")).toHaveCount(0);
   await expect(page.locator("canvas")).toHaveCount(0);
@@ -118,6 +118,7 @@ test("GitHub ranking explains project value, problem and language composition", 
   await installApi(page);
   await page.goto("/github/");
   await expect(page.getByText("用于构建 FastAPI 智能体服务的工具包。")).toBeVisible();
+  await page.getByText("解读与特征").click();
   await expect(page.getByText("降低智能体后端的工程化门槛。")).toBeVisible();
   await expect(page.getByText("解决智能体 API 编排、接入和复用成本高的问题。")).toBeVisible();
   await expect(page.getByText("Python 82% · TypeScript 18%")).toBeVisible();
@@ -127,10 +128,10 @@ test("GitHub ranking explains project value, problem and language composition", 
 test("admin center keeps key login and contains no delivery surface", async ({ page }) => {
   await installApi(page, false);
   await page.goto("/admin/");
-  await expect(page.getByRole("heading", { name: "频道监测管理中心" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "管理中心" })).toBeVisible();
   await page.getByLabel("管理密钥").fill("test-management-key");
   await page.getByRole("button", { name: "进入管理中心" }).click();
-  await expect(page.getByRole("heading", { name: "频道监测管理中心" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "管理中心" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "来源管理" })).toBeVisible();
   await expect(page.getByText("可靠投递")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -140,7 +141,7 @@ test("paper theme keeps the admin media filter readable", async ({ page }) => {
   await page.addInitScript(() => window.localStorage.setItem("tm-theme", "paper"));
   await installApi(page);
   await page.goto("/admin/");
-  await expect(page.getByRole("heading", { name: "频道监测管理中心" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "管理中心" })).toBeVisible();
 
   const mediaFilter = page.getByLabel("媒体类型");
   if ((page.viewportSize()?.width || 0) <= 1180) {
@@ -179,7 +180,7 @@ test("reduced motion stops the admin signal pulse", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installApi(page);
   await page.goto("/admin/");
-  await expect(page.getByRole("heading", { name: "频道监测管理中心" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "管理中心" })).toBeVisible();
   const animation = await page.locator(".signal-wave").first().evaluate((node) => getComputedStyle(node).animationName);
   expect(animation).toBe("none");
 });

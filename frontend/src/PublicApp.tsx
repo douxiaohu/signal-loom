@@ -5,7 +5,10 @@ import MessageFeed from "./components/MessageFeed";
 import PublicHeader from "./components/PublicHeader";
 import PublicSourceList from "./components/PublicSourceList";
 import type { Filters, Message, MessagePage, PublicSource } from "./types";
+import type { MediaFilter } from "./types";
 import { isMediaFilter, mediaOptions } from "./utils";
+
+const publicMediaOptions = mediaOptions.filter((option) => ["all", "photo", "video", "document"].includes(option.value));
 
 
 const PAGE_LIMIT = 20;
@@ -134,6 +137,11 @@ export default function PublicApp() {
     commitFilters({ ...filters, chatId });
   }
 
+  function selectMedia(media: MediaFilter) {
+    setDraftMedia(media);
+    commitFilters({ ...filters, media });
+  }
+
   async function loadMore() {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
@@ -152,22 +160,30 @@ export default function PublicApp() {
     : sources.find((source) => String(source.chat_id) === filters.chatId)?.name || "当前来源";
 
   return (
-    <div className="public-shell">
+    <>
       <a className="skip-link" href="#message-list">跳到消息列表</a>
       <PublicHeader onSubmit={submitSearch} query={draftQuery} onQueryChange={setDraftQuery} />
-      <div className="public-filter-row">
-        <label htmlFor="public-media">媒体类型</label>
-        <select id="public-media" value={draftMedia} onChange={(event) => setDraftMedia(event.target.value as Filters["media"])}>
-          {mediaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      </div>
+      <div className="public-shell">
       <div className="public-layout">
         <PublicSourceList activeChatId={filters.chatId} sources={sources} onSelect={selectSource} />
         <section className="public-timeline" aria-busy={loading}>
-          <header className="public-timeline-heading">
-            <div><h2>{activeSource}</h2><p>{filters.query ? `关键词：“${filters.query}”` : "按时间倒序浏览公开消息"}</p></div>
+          <div className="public-toolbar">
+            <div className="media-chips" role="group" aria-label="媒体类型">
+              {publicMediaOptions.map((option) => (
+                <button
+                  key={option.value}
+                  className={`media-chip${draftMedia === option.value ? " active" : ""}`}
+                  type="button"
+                  aria-pressed={draftMedia === option.value}
+                  onClick={() => selectMedia(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             {loading ? <span className="public-loading">正在更新…</span> : null}
-          </header>
+          </div>
+          {filters.query ? <p className="public-query-hint">关键词：“{filters.query}”</p> : null}
           {loading && !messages.length ? (
             <span className="sr-only" role="status" aria-label={`正在加载${activeSource}消息`}>
               正在加载{activeSource}消息
@@ -183,6 +199,7 @@ export default function PublicApp() {
           />
         </section>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

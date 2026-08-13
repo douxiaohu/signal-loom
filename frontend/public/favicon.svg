@@ -1,19 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Telegram 信息监测中心">
-  <defs>
-    <linearGradient id="glass" x1="8" x2="56" y1="6" y2="58" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#7cf5d1"/>
-      <stop offset="0.48" stop-color="#62e5ff"/>
-      <stop offset="1" stop-color="#a78bfa"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="22" cy="18" r="42" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#ffffff" stop-opacity="0.9"/>
-      <stop offset="0.3" stop-color="#62e5ff" stop-opacity="0.44"/>
-      <stop offset="1" stop-color="#06111f" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="#06111f"/>
-  <rect x="7" y="7" width="50" height="50" rx="11" fill="url(#glass)" opacity="0.28" stroke="url(#glass)" stroke-width="2"/>
-  <path d="M17 31.4 47 18.5c1.8-.8 3.5.9 2.7 2.7L37.1 50c-.8 1.8-3.4 1.5-3.8-.4l-2.2-10.2-8.2 5.9c-1.5 1.1-3.6-.4-3-2.2l3.1-9.4-6.1-1.1c-1.6-.3-1.9-2.5-.4-3.2Z" fill="#f7fbff"/>
-  <path d="M25 33.8 44.8 21.9 31.1 39.4" fill="none" stroke="#06111f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
-  <circle cx="18" cy="17" r="22" fill="url(#glow)" opacity="0.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="频道资讯">
+  <style>
+    .tile { fill: #1f4ed8; }
+    .plane { fill: #ffffff; }
+    .fold { fill: #dbe7ff; }
+    @media (prefers-color-scheme: dark) {
+      .tile { fill: #8eb4ff; }
+      .plane { fill: #10141c; }
+      .fold { fill: #2a3344; }
+    }
+  </style>
+  <rect class="tile" width="32" height="32" rx="8"/>
+  <path class="plane" d="M8 16.15 24.8 8.85 17.55 23.9 16.05 17.85Z"/>
+  <path class="fold" d="M16.05 17.85 24.8 8.85 13.2 16.35Z"/>
 </svg>

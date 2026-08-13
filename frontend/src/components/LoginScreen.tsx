@@ -24,10 +24,10 @@ export default function LoginScreen({ error, loading, onLogin }: LoginScreenProp
     <main className="login-shell">
       <div className="login-theme"><ThemeSwitcher /></div>
       <section className="login-panel" aria-labelledby="login-title">
-        <div className="login-brand" aria-hidden="true"><ShieldCheck size={28} /></div>
-        <p className="eyebrow">PRIVATE OPERATIONS</p>
-        <h1 id="login-title">频道监测管理中心</h1>
-        <p className="login-copy">管理员可维护频道来源、采集状态和监测规则。使用管理密钥建立 12 小时私有会话，密钥不会写入浏览器存储。</p>
+        <div className="login-brand" aria-hidden="true"><ShieldCheck size={26} /></div>
+        <p className="eyebrow">管理入口</p>
+        <h1 id="login-title">管理中心</h1>
+        <p className="login-copy">维护来源、采集状态和监测规则。用管理密钥建立 12 小时会话，密钥不会写入浏览器存储。</p>
         <form onSubmit={submit}>
           <label htmlFor="admin-key">管理密钥</label>
           <div className="key-field">

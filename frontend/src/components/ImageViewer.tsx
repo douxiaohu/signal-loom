@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 
@@ -11,7 +12,6 @@ type ImageViewerProps = {
 
 
 export default function ImageViewer({ alt, returnFocusRef, src, onClose }: ImageViewerProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -23,20 +23,7 @@ export default function ImageViewer({ alt, returnFocusRef, src, onClose }: Image
         onClose();
         return;
       }
-      if (event.key !== "Tab") return;
-      const focusable = Array.from(
-        panelRef.current?.querySelectorAll<HTMLElement>('button, a[href], [tabindex]:not([tabindex="-1"])') || []
-      );
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      if (event.key === "Tab") event.preventDefault();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => {
@@ -46,22 +33,19 @@ export default function ImageViewer({ alt, returnFocusRef, src, onClose }: Image
     };
   }, [onClose, returnFocusRef]);
 
-  return (
+  return createPortal(
     <div
       className="image-viewer-backdrop"
       role="dialog"
       aria-modal="true"
       aria-label="图片预览"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+      onClick={onClose}
     >
-      <div className="image-viewer-panel" ref={panelRef}>
-        <button ref={closeRef} className="image-viewer-close" type="button" onClick={onClose} aria-label="关闭图片预览">
-          <X size={22} aria-hidden="true" />
-        </button>
-        <img className="image-viewer-image" src={src} alt={alt} />
-      </div>
-    </div>
+      <button ref={closeRef} className="image-viewer-close" type="button" onClick={onClose} aria-label="关闭图片预览">
+        <X size={22} aria-hidden="true" />
+      </button>
+      <img className="image-viewer-image" src={src} alt={alt} />
+    </div>,
+    document.body
   );
 }

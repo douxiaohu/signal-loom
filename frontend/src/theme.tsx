@@ -2,11 +2,11 @@ import type { ChangeEvent } from "react";
 
 export type ThemeId = "midnight" | "aurora" | "ember" | "paper";
 
-const options: Array<[ThemeId, string]> = [["midnight", "午夜蓝"], ["aurora", "极光绿"], ["ember", "余烬橙"], ["paper", "白色"]];
+const options: Array<[ThemeId, string]> = [["paper", "白色"], ["midnight", "午夜蓝"], ["aurora", "极光绿"], ["ember", "余烬橙"]];
 const storageKey = "tm-theme";
 
 function readTheme(): ThemeId {
-  return (window.localStorage.getItem(storageKey) || "midnight") as ThemeId;
+  return (window.localStorage.getItem(storageKey) || "paper") as ThemeId;
 }
 
 function selectTheme(event: ChangeEvent<HTMLSelectElement>) {
@@ -19,6 +19,7 @@ document.documentElement.dataset.theme = readTheme();
 
 export function ThemeSwitcher() {
   const theme = readTheme();
+  document.documentElement.dataset.theme = theme;
   return (
     <label className="theme-picker">
       <span className="theme-swatch" aria-hidden="true" />

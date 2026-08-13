@@ -52,7 +52,7 @@ describe("PublicApp", () => {
 
     render(<PublicApp />);
 
-    expect(await screen.findByRole("heading", { name: "Telegram 频道资讯监测平台" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "频道资讯" })).toBeInTheDocument();
     expect(await screen.findByText("公开频道消息")).toBeInTheDocument();
     expect(screen.queryByLabelText("管理密钥")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "管理员入口" })).toHaveAttribute("href", "/admin");

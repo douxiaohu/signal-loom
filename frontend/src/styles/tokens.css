@@ -1,0 +1,100 @@
+:root,
+html[data-theme="paper"] {
+  --bg: #f4f5f7;
+  --paper: #ffffff;
+  --text: #14161a;
+  --muted: #5c616b;
+  --soft: #8b909a;
+  --line: #e4e6eb;
+  --line-soft: rgba(17, 19, 24, 0.08);
+  --brand: #1f4ed8;
+  --ok: #0f7a4d;
+  --warn: #b45309;
+  --danger: #c2413b;
+  --violet: #5b4cdb;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 28px rgba(20, 24, 32, 0.06);
+  --radius: 12px;
+  --radius-sm: 10px;
+  --radius-lg: 16px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --header-h: 60px;
+  --cyan: var(--brand);
+  --mint: var(--ok);
+  --amber: var(--warn);
+  --ink: var(--bg);
+  --ink-soft: var(--paper);
+  --surface: var(--paper);
+  --surface-raised: var(--paper);
+  --surface-hover: #f3f4f6;
+  color: var(--text);
+  background: var(--bg);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+html[data-theme="midnight"] {
+  --bg: #07111d;
+  --paper: #0f2234;
+  --text: #f3f7fa;
+  --muted: #94aabb;
+  --soft: #6f8799;
+  --line: #24465d;
+  --line-soft: rgba(79, 122, 149, 0.38);
+  --brand: #64e5f2;
+  --ok: #79f2c0;
+  --warn: #ffc96d;
+  --danger: #ff7d7d;
+  --violet: #baa6ff;
+  --shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  --ink: #07111d;
+  --ink-soft: #0a1826;
+  --surface: #0f2234;
+  --surface-raised: #132a3d;
+  --surface-hover: #173147;
+  color-scheme: dark;
+}
+
+html[data-theme="aurora"] {
+  --bg: #071612;
+  --paper: #0d241d;
+  --text: #eef8f4;
+  --muted: #8fb3a6;
+  --soft: #6d9184;
+  --line: #1d4a3c;
+  --line-soft: rgba(126, 231, 214, 0.22);
+  --brand: #7ee7d6;
+  --ok: #7ee7d6;
+  --warn: #ffc96d;
+  --danger: #ff8b8b;
+  --violet: #9ad7c8;
+  --shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  --ink: #071612;
+  --ink-soft: #0a1c16;
+  --surface: #0d241d;
+  --surface-raised: #123028;
+  --surface-hover: #16382e;
+  color-scheme: dark;
+}
+
+html[data-theme="ember"] {
+  --bg: #160d08;
+  --paper: #24150e;
+  --text: #f8f1ea;
+  --muted: #b39a86;
+  --soft: #8d7462;
+  --line: #4a3120;
+  --line-soft: rgba(255, 179, 107, 0.22);
+  --brand: #ffb36b;
+  --ok: #79f2c0;
+  --warn: #ffb36b;
+  --danger: #ff8b8b;
+  --violet: #e7b48a;
+  --shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  --ink: #160d08;
+  --ink-soft: #1c120c;
+  --surface: #24150e;
+  --surface-raised: #2e1b12;
+  --surface-hover: #382116;
+  color-scheme: dark;
+}

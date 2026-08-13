@@ -9,11 +9,13 @@ describe("ThemeSwitcher", () => {
     delete document.documentElement.dataset.theme;
   });
 
-  it("applies and persists the selected palette", async () => {
+  it("defaults to the white palette and can switch away", async () => {
     render(<ThemeSwitcher />);
-    await userEvent.setup().selectOptions(screen.getByLabelText("界面主题"), "paper");
-
     expect(document.documentElement.dataset.theme).toBe("paper");
-    expect(window.localStorage.getItem("tm-theme")).toBe("paper");
+
+    await userEvent.setup().selectOptions(screen.getByLabelText("界面主题"), "midnight");
+
+    expect(document.documentElement.dataset.theme).toBe("midnight");
+    expect(window.localStorage.getItem("tm-theme")).toBe("midnight");
   });
 });

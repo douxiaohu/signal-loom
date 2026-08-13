@@ -23,35 +23,46 @@ export default function OperationsRail(props: OperationsRailProps) {
   return (
     <aside className="operations-rail" aria-label="来源健康与监测规则">
       <section id="source-operations" className="ops-card" tabIndex={-1} aria-labelledby="source-operations-title">
-        <header><div><p className="section-kicker">SOURCE OPERATIONS</p><h2 id="source-operations-title">来源管理</h2></div><strong className={unhealthy.length ? "count-warn" : "count-ok"}>{unhealthy.length ? formatCount(unhealthy.length) : "OK"}</strong></header>
-        <div className="health-list">
-          {props.groups.map((group) => (
-            <article className="source-admin-row" key={group.chat_id}>
-              <div className="health-row">
-                <span className={`health-dot health-${group.health_status}`} aria-hidden="true" />
-                <span><strong>{group.name}</strong><small>{healthCopy(group)}</small></span>
-              </div>
-              <div className="source-badges" aria-label={`${group.name}的来源状态`}>
-                <span>{group.enabled === false ? "已停用" : "采集中"}</span>
-                <span>{group.public_visible ? "公开展示" : "仅管理员"}</span>
-              </div>
-              <div className="inline-actions source-actions">
-                <button type="button" onClick={() => void props.onPatchSource(group, { public_visible: !group.public_visible })}>
-                  {group.public_visible ? <EyeOff size={14} aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />}{group.public_visible ? "设为私有" : "设为公开"}
-                </button>
-                <button type="button" onClick={() => void props.onPatchSource(group, { enabled: group.enabled === false })}>
-                  {group.enabled === false ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}{group.enabled === false ? "启用采集" : "停用采集"}
-                </button>
-                <button type="button" disabled={group.enabled === false} onClick={() => void props.onCrawlSource(group.chat_id)}><Radar size={14} aria-hidden="true" />立即采集</button>
-              </div>
-            </article>
-          ))}
-          {!props.groups.length ? <p className="empty-copy">暂无来源配置</p> : null}
-        </div>
+        <header><div><p className="section-kicker">运行</p><h2 id="source-operations-title">来源管理</h2></div><strong className={unhealthy.length ? "count-warn" : "count-ok"}>{unhealthy.length ? formatCount(unhealthy.length) : "正常"}</strong></header>
+        {props.groups.length ? (
+          <table className="source-table">
+            <thead>
+              <tr>
+                <th>来源</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {props.groups.map((group) => (
+                <tr key={group.chat_id}>
+                  <td>
+                    <strong>{group.name}</strong>
+                    <small>{healthCopy(group)}</small>
+                  </td>
+                  <td>
+                    <small>{group.enabled === false ? "已停用" : "采集中"} · {group.public_visible ? "公开" : "私有"}</small>
+                  </td>
+                  <td>
+                    <div className="source-table-actions">
+                      <button type="button" onClick={() => void props.onPatchSource(group, { public_visible: !group.public_visible })}>
+                        {group.public_visible ? <EyeOff size={14} aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />}{group.public_visible ? "私有" : "公开"}
+                      </button>
+                      <button type="button" onClick={() => void props.onPatchSource(group, { enabled: group.enabled === false })}>
+                        {group.enabled === false ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}{group.enabled === false ? "启用" : "停用"}
+                      </button>
+                      <button type="button" disabled={group.enabled === false} onClick={() => void props.onCrawlSource(group.chat_id)}><Radar size={14} aria-hidden="true" />采集</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <p className="empty-copy">暂无来源配置</p>}
         <SourceComposer onCreate={props.onCreateSource} />
       </section>
       <section id="alert-operations" className="ops-card" tabIndex={-1} aria-labelledby="alert-operations-title">
-        <header><div><p className="section-kicker">RULE MATCHES</p><h2 id="alert-operations-title">规则命中</h2></div><strong className={newAlerts.length ? "count-warn" : "count-ok"}>{formatCount(newAlerts.length)}</strong></header>
+        <header><div><p className="section-kicker">监测</p><h2 id="alert-operations-title">规则命中</h2></div><strong className={newAlerts.length ? "count-warn" : "count-ok"}>{formatCount(newAlerts.length)}</strong></header>
         <div className="compact-list">
           {props.alerts.slice(0, 4).map((alert) => (
             <article className="compact-item" key={alert.id}>

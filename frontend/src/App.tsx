@@ -310,7 +310,7 @@ export default function App() {
           <FilterPanel draft={draft} groups={groups} open={filtersOpen} onChange={setDraft} onClose={closeFilters} onSubmit={commitFilters} />
           <section className="timeline-column" aria-label="消息工作区">
             <header className="timeline-toolbar">
-              <div><p className="section-kicker">MESSAGE TIMELINE</p><h2>{activeSource}</h2><p>{mediaLabel(filters.media)}{filters.query ? ` · “${filters.query}”` : ""}</p></div>
+              <div><p className="section-kicker">消息时间线</p><h2>{activeSource}</h2><p>{mediaLabel(filters.media)}{filters.query ? ` · “${filters.query}”` : ""}</p></div>
               <button className="secondary-button" type="button" onClick={openFilters}><SlidersHorizontal size={16} aria-hidden="true" />筛选</button>
             </header>
             {logoutError ? <InlineError title="退出失败" message={logoutError} onRetry={() => void handleLogout()} /> : null}
@@ -322,7 +322,7 @@ export default function App() {
               </button>
             ) : null}
             <div className="feed-status"><span>{initialLoading ? "正在同步…" : `${messages.length} 条消息`}</span><span>{lastMessageLoad ? `更新于 ${lastMessageLoad}` : "等待首次同步"}</span></div>
-            <MessageFeed hasMore={hasMore} initialLoading={initialLoading} loadingMore={loadingMore} messages={messages} onLoadMore={() => void loadMore()} />
+            <MessageFeed density="console" hasMore={hasMore} initialLoading={initialLoading} loadingMore={loadingMore} messages={messages} onLoadMore={() => void loadMore()} />
           </section>
           <div>
             {operationsError ? <InlineError title="运维状态刷新失败" message={operationsError} onRetry={() => void loadOperations()} /> : null}

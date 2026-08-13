@@ -1,4 +1,4 @@
-import { LogOut, Menu, RadioTower } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 
 import type { HealthStatus } from "../types";
 import { ThemeSwitcher } from "../theme";
@@ -16,14 +16,14 @@ type StatusBandProps = {
 export default function StatusBand({ health, healthyCount, messageCount, sourceCount, onLogout, onOpenFilters }: StatusBandProps) {
   return (
     <header className="status-band">
-      <button className="icon-button mobile-filter-button" type="button" onClick={onOpenFilters} aria-label="打开筛选">
-        <Menu size={21} aria-hidden="true" />
-      </button>
       <div className="brand-lockup">
-        <SourcePulse status={health} />
+        <button className="icon-button mobile-filter-button" type="button" onClick={onOpenFilters} aria-label="打开筛选">
+          <Menu size={18} aria-hidden="true" />
+        </button>
+        <span className={`status-dot is-${health}`} role="img" aria-label={`来源总体状态：${healthLabel(health)}`} />
         <div>
-          <p>TELEGRAM / SOURCE OPERATIONS</p>
-          <h1>频道监测管理中心</h1>
+          <p>工作台</p>
+          <h1>管理中心</h1>
         </div>
       </div>
       <dl className="status-metrics">
@@ -34,23 +34,10 @@ export default function StatusBand({ health, healthyCount, messageCount, sourceC
       <div className="status-actions">
         <ThemeSwitcher />
         <button className="logout-button" type="button" onClick={onLogout}>
-          <LogOut size={17} aria-hidden="true" /> 退出
+          <LogOut size={16} aria-hidden="true" /> 退出
         </button>
       </div>
     </header>
-  );
-}
-
-function SourcePulse({ status }: { status: HealthStatus }) {
-  return (
-    <div className={`signal-pulse signal-${status}`} role="img" aria-label={`来源总体状态：${healthLabel(status)}`}>
-      <svg viewBox="0 0 48 48" role="img" aria-hidden="true">
-        <circle className="signal-core" cx="24" cy="24" r="4" />
-        <g className="signal-wave wave-one"><circle cx="24" cy="24" r="11" /></g>
-        <g className="signal-wave wave-two"><circle cx="24" cy="24" r="18" /></g>
-      </svg>
-      <RadioTower size={18} aria-hidden="true" />
-    </div>
   );
 }
 

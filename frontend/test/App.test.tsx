@@ -88,10 +88,10 @@ describe("App", () => {
 
     render(<App />);
     const user = userEvent.setup();
-    expect(await screen.findByRole("heading", { name: "频道监测管理中心" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "管理中心" })).toBeInTheDocument();
     await user.type(screen.getByLabelText("管理密钥"), "correct-key");
     await user.click(screen.getByRole("button", { name: "进入管理中心" }));
-    expect(await screen.findByRole("heading", { name: "频道监测管理中心" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "管理中心" })).toBeInTheDocument();
     const paths = vi.mocked(fetch).mock.calls.map(([input]) => new URL(String(input), window.location.origin).pathname);
     expect(paths).not.toContain("/api/deliveries");
   });
@@ -203,7 +203,7 @@ describe("App", () => {
     });
     installBaseFetch(() => json({ items: [], has_more: false, next_cursor: null, total: null }));
     render(<App />);
-    await screen.findByRole("heading", { name: "频道监测管理中心" });
+    await screen.findByRole("heading", { name: "管理中心" });
     const fetchMock = vi.mocked(fetch);
     const sourceCalls = () => fetchMock.mock.calls.filter(([input]) => new URL(String(input), window.location.origin).pathname === "/api/admin/sources").length;
     await waitFor(() => expect(sourceCalls()).toBe(1));
@@ -228,14 +228,14 @@ describe("App", () => {
     );
     render(<App />);
     const user = userEvent.setup();
-    expect(await screen.findByRole("heading", { name: "频道监测管理中心" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "管理中心" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "退出" }));
 
     expect(await screen.findByText(/退出失败，当前会话仍保持有效/, { selector: ".single-live-region" })).toBeInTheDocument();
     expect(screen.getByText("退出失败", { selector: ".inline-error strong" })).toBeInTheDocument();
     expect(document.querySelectorAll("[aria-live]")).toHaveLength(1);
-    expect(screen.getByRole("heading", { name: "频道监测管理中心" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "管理中心" })).toBeInTheDocument();
   });
 
   it("announces a successful alert action and moves focus to its stable result card", async () => {

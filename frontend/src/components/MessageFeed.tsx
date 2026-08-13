@@ -2,10 +2,13 @@ import { useRef, useState } from "react";
 import { Download, ExternalLink, FileText, ImageOff, Play, Volume2 } from "lucide-react";
 
 import type { MediaItem, Message } from "../types";
-import { cleanMessageContent, formatDate, mediaLabel } from "../utils";
+import { cleanMessageContent, dayKey, formatDayLabel, formatTime, mediaLabel } from "../utils";
 import ImageViewer from "./ImageViewer";
 
+type FeedDensity = "reading" | "console";
+
 type MessageFeedProps = {
+  density?: FeedDensity;
   hasMore: boolean;
   initialLoading: boolean;
   loadingMore: boolean;
@@ -13,69 +16,120 @@ type MessageFeedProps = {
   onLoadMore: () => void;
 };
 
-export default function MessageFeed({ hasMore, initialLoading, loadingMore, messages, onLoadMore }: MessageFeedProps) {
+type OpenImage = {
+  alt: string;
+  src: string;
+};
+
+export default function MessageFeed({
+  density = "reading",
+  hasMore,
+  initialLoading,
+  loadingMore,
+  messages,
+  onLoadMore
+}: MessageFeedProps) {
+  const [openImage, setOpenImage] = useState<OpenImage | null>(null);
+  const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const openViewer = (image: OpenImage, trigger: HTMLButtonElement | null) => {
+    lastTriggerRef.current = trigger;
+    setOpenImage(image);
+  };
+
   return (
-    <main id="message-list" className="message-list" aria-label="消息时间线" tabIndex={-1}>
-      {initialLoading && !messages.length ? <MessageSkeleton /> : null}
-      {messages.map((message) => <MessageCard key={message.id} message={message} />)}
-      {!initialLoading && hasMore ? (
-        <button className="load-more" type="button" onClick={onLoadMore} disabled={loadingMore}>
-          {loadingMore ? "正在加载更多…" : "加载更多"}
-        </button>
-      ) : !initialLoading && messages.length ? (
-        <div className="feed-end">已显示全部匹配消息</div>
-      ) : !initialLoading ? (
-        <div className="empty-state">
-          <strong>没有匹配消息</strong>
-          <span>调整来源、媒体类型或关键词后再试。</span>
-        </div>
+    <>
+      <main id="message-list" className="message-list" aria-label="消息时间线" tabIndex={-1}>
+        {initialLoading && !messages.length ? <MessageSkeleton /> : null}
+        {groupedMessages(messages).map((entry) => (
+          entry.type === "day" ? (
+            <h3 className="day-label" key={entry.key}>{entry.label}</h3>
+          ) : (
+            <MessageCard key={entry.message.id} density={density} message={entry.message} onOpenImage={openViewer} />
+          )
+        ))}
+        {!initialLoading && hasMore ? (
+          <button className="load-more" type="button" onClick={onLoadMore} disabled={loadingMore}>
+            {loadingMore ? "正在加载更多…" : "加载更多"}
+          </button>
+        ) : !initialLoading && messages.length ? (
+          <div className="feed-end">已显示全部匹配消息</div>
+        ) : !initialLoading ? (
+          <div className="empty-state">
+            <strong>没有匹配消息</strong>
+            <span>调整来源、媒体类型或关键词后再试。</span>
+          </div>
+        ) : null}
+      </main>
+      {openImage ? (
+        <ImageViewer
+          src={openImage.src}
+          alt={openImage.alt}
+          returnFocusRef={lastTriggerRef}
+          onClose={() => setOpenImage(null)}
+        />
       ) : null}
-    </main>
+    </>
   );
 }
 
-export function MessageCard({ message }: { message: Message }) {
+export function MessageCard({
+  density,
+  message,
+  onOpenImage
+}: {
+  density: FeedDensity;
+  message: Message;
+  onOpenImage: (image: OpenImage, trigger: HTMLButtonElement | null) => void;
+}) {
   const mediaItems = normalizedMediaItems(message);
   const speaker = message.sender_name || "未知发送者";
   const source = message.chat_title || "未知来源";
   const titleId = `message-${message.id}-title`;
   const content = cleanMessageContent(message.content);
+  const mediaCount = mediaItems.length >= 5 ? "many" : String(Math.max(mediaItems.length, 1));
   return (
-    <article className="message-card" aria-labelledby={titleId}>
-      <header className="message-head">
-        <div className="message-identity">
-          <span className="source-mark" aria-hidden="true">{source.slice(0, 1).toUpperCase()}</span>
-          <div>
-            <h3 id={titleId}>{source}</h3>
-            <div className="message-meta">
-              <span>{speaker}</span>
-              <time dateTime={message.message_time}>{formatDate(message.message_time)}</time>
-              {message.media_type ? <span className="media-badge">{mediaLabel(message.media_type)}</span> : null}
-            </div>
-          </div>
+    <article className={`message-card ${density === "console" ? "is-console" : "is-reading"}`} aria-labelledby={titleId}>
+      <header className="message-byline">
+        <div className="message-byline-main">
+          {density === "console" ? <span className="source-mark" aria-hidden="true">{source.slice(0, 1).toUpperCase()}</span> : null}
+          <h3 id={titleId}>{source}</h3>
+          <time dateTime={message.message_time}>{formatTime(message.message_time)}</time>
+          {speaker !== source ? <span className="byline-speaker">{speaker}</span> : null}
+          {density === "console" && message.media_type ? <span className="media-badge">{mediaLabel(message.media_type)}</span> : null}
         </div>
         {message.source_url ? (
           <a className="source-link" href={message.source_url} target="_blank" rel="noopener noreferrer">
-            原文 <ExternalLink size={15} aria-hidden="true" />
+            原文 <ExternalLink size={14} aria-hidden="true" />
           </a>
         ) : null}
       </header>
       {content ? <p className="message-text">{content}</p> : <p className="message-text muted-copy">仅包含{mediaLabel(message.media_type || "text")}</p>}
       {mediaItems.length ? (
-        <div className="media-grid">
-          {mediaItems.map((item, index) => <MediaAttachment key={`${item.url}-${index}`} item={item} message={message} index={index} />)}
+        <div className={`media-grid media-count-${mediaCount}`} data-count={mediaItems.length}>
+          {mediaItems.map((item, mediaIndex) => (
+            <div className="media-cell" key={`${item.url}-${mediaIndex}`}>
+              <MediaAttachment item={item} message={message} index={mediaIndex} onOpenImage={onOpenImage} />
+            </div>
+          ))}
         </div>
       ) : null}
-      <footer className="message-foot">
-        <span>消息 #{message.message_id}</span>
-      </footer>
+      {density === "console" ? <footer className="message-foot"><span>消息 #{message.message_id}</span></footer> : null}
     </article>
   );
 }
 
-function MediaAttachment({ item, message, index }: { item: MediaItem; message: Message; index: number }) {
+function MediaAttachment({
+  item,
+  message,
+  index,
+  onOpenImage
+}: {
+  item: MediaItem;
+  message: Message;
+  index: number;
+  onOpenImage: (image: OpenImage, trigger: HTMLButtonElement | null) => void;
+}) {
   const [failed, setFailed] = useState(false);
-  const [viewerOpen, setViewerOpen] = useState(false);
   const imageButtonRef = useRef<HTMLButtonElement>(null);
   const source = message.chat_title || "未知来源";
   const speaker = message.sender_name || "未知发送者";
@@ -127,35 +181,42 @@ function MediaAttachment({ item, message, index }: { item: MediaItem; message: M
     );
   }
   return (
-    <>
-      <button
-        ref={imageButtonRef}
-        className="media-image-trigger"
-        type="button"
-        aria-label={`查看完整图片 ${index + 1}`}
-        onClick={() => setViewerOpen(true)}
-      >
-        <img
-          className="media-image-contained"
-          src={item.url}
-          alt={`${source}中${speaker}发布的图片 ${index + 1}`}
-          width="800"
-          height="500"
-          loading="lazy"
-          decoding="async"
-          onError={() => setFailed(true)}
-        />
-      </button>
-      {viewerOpen ? (
-        <ImageViewer
-          src={item.original_url || item.url}
-          alt={`${source}中${speaker}发布的完整图片 ${index + 1}`}
-          returnFocusRef={imageButtonRef}
-          onClose={() => setViewerOpen(false)}
-        />
-      ) : null}
-    </>
+    <button
+      ref={imageButtonRef}
+      className="media-image-trigger"
+      type="button"
+      aria-label={`查看完整图片 ${index + 1}`}
+      onClick={() => onOpenImage({
+        src: item.original_url || item.url,
+        alt: `${source}中${speaker}发布的完整图片 ${index + 1}`
+      }, imageButtonRef.current)}
+    >
+      <img
+        className="media-image-contained"
+        src={item.url}
+        alt={`${source}中${speaker}发布的图片 ${index + 1}`}
+        width="800"
+        height="500"
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    </button>
   );
+}
+
+function groupedMessages(messages: Message[]) {
+  const entries: Array<{ type: "day"; key: string; label: string } | { type: "item"; message: Message }> = [];
+  let lastKey = "";
+  for (const message of messages) {
+    const key = dayKey(message.message_time);
+    if (key !== lastKey) {
+      entries.push({ type: "day", key: `day-${key}`, label: formatDayLabel(message.message_time) });
+      lastKey = key;
+    }
+    entries.push({ type: "item", message });
+  }
+  return entries;
 }
 
 function normalizedMediaItems(message: Message): MediaItem[] {

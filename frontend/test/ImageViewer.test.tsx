@@ -41,13 +41,38 @@ describe("ImageViewer", () => {
 
     await user.click(trigger);
 
-    expect(screen.getByRole("dialog", { name: "图片预览" })).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "图片预览" });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog.parentElement).toBe(document.body);
     expect(screen.getByRole("img", { name: "竹新社中编辑发布的完整图片 1" })).toHaveAttribute(
       "src",
       "/api/public/media/8/0?variant=original"
     );
 
     await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes from the close button or the darkened backdrop", async () => {
+    render(
+      <MessageFeed
+        hasMore={false}
+        initialLoading={false}
+        loadingMore={false}
+        messages={[photoMessage]}
+        onLoadMore={() => undefined}
+      />
+    );
+    const user = userEvent.setup();
+    const trigger = screen.getByRole("button", { name: "查看完整图片 1" });
+
+    await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: "关闭图片预览" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(trigger);
+    await user.click(screen.getByRole("dialog", { name: "图片预览" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
   });

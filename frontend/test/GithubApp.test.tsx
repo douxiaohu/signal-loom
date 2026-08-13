@@ -43,13 +43,14 @@ describe("GithubApp", () => {
 
     render(<GithubApp />);
 
-    expect(await screen.findByRole("heading", { name: "找到正在加速的开源项目" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "GitHub 趋势" })).toBeInTheDocument();
     expect(await screen.findByText("用于构建 FastAPI 智能体服务的工具包。")).toBeInTheDocument();
+    expect(screen.getByText("24 小时 +25 stars")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "频道资讯" })).toHaveAttribute("href", "/");
+    await user.click(screen.getByText("解读与特征"));
     expect(screen.getByText("降低智能体后端的工程化门槛。")).toBeInTheDocument();
     expect(screen.getByText("解决智能体 API 编排、接入和复用成本高的问题。")).toBeInTheDocument();
     expect(screen.getByText("Python 82% · TypeScript 18%")).toBeInTheDocument();
-    expect(screen.getByText("24 小时 +25 stars")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "频道资讯" })).toHaveAttribute("href", "/");
 
     await user.click(screen.getByRole("button", { name: /周榜/ }));
 

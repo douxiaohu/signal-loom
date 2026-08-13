@@ -57,4 +57,23 @@ describe("MessageFeed", () => {
 
     expect(screen.getByRole("button", { name: "正在加载更多…" })).toBeDisabled();
   });
+
+  it("shows every photo in a compact grid without collapsing extras", () => {
+    render(
+      <MessageFeed
+        hasMore={false}
+        initialLoading={false}
+        loadingMore={false}
+        messages={[message({
+          media_type: "photo",
+          media_items: [1, 2, 3, 4].map((n) => ({ url: `/photo-${n}`, kind: "image", role: "media" }))
+        })]}
+        onLoadMore={() => undefined}
+      />
+    );
+
+    expect(screen.getByAltText("安全情报源中值班员发布的图片 1")).toBeInTheDocument();
+    expect(screen.getByAltText("安全情报源中值班员发布的图片 4")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "+1 张" })).not.toBeInTheDocument();
+  });
 });

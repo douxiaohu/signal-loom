@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
-import { ThemeSwitcher } from "../theme";
 
+import { ThemeSwitcher } from "../theme";
+import SiteNav from "./SiteNav";
 
 type PublicHeaderProps = {
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
@@ -8,20 +9,16 @@ type PublicHeaderProps = {
   onQueryChange: (value: string) => void;
 };
 
-
 export default function PublicHeader({ onSubmit, query, onQueryChange }: PublicHeaderProps) {
   return (
-    <header className="public-header">
-      <div className="public-brand">
-        <h1>Telegram 频道资讯监测平台</h1>
-        <p>公开频道内容聚合、检索与状态追踪</p>
-      </div>
-      <nav className="surface-switcher public-surface-switcher" aria-label="公开专区">
-        <a className="active" href="/" aria-current="page">频道资讯</a>
-        <a href="/github">GitHub 排行榜</a>
-      </nav>
-      <form className="public-search" role="search" onSubmit={onSubmit}>
-        <Search size={18} aria-hidden="true" />
+    <header className="site-header">
+      <a className="site-brand" href="/" aria-label="频道资讯首页">
+        <img className="brand-mark" src="/favicon.svg" alt="" width="28" height="28" />
+        <h1>频道资讯</h1>
+      </a>
+      <SiteNav current="feed" />
+      <form className="site-search" role="search" onSubmit={onSubmit}>
+        <Search size={16} aria-hidden="true" />
         <label className="sr-only" htmlFor="public-query">搜索消息关键词</label>
         <input
           id="public-query"

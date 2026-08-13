@@ -52,7 +52,7 @@ export default function FilterPanel({ draft, groups, open, onChange, onClose, on
       role={open ? "dialog" : undefined}
     >
       <div className="panel-heading">
-        <div><p className="section-kicker">SIGNAL INPUT</p><h2>来源与筛选</h2></div>
+        <div><p className="section-kicker">筛选</p><h2>来源与筛选</h2></div>
         <button className="icon-button close-drawer" type="button" onClick={onClose} aria-label="关闭筛选"><X size={20} aria-hidden="true" /></button>
       </div>
       <form aria-label="消息筛选" onSubmit={submit}>
