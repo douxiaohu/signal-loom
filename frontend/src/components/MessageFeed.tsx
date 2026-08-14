@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { Download, ExternalLink, FileText, ImageOff, Play, Volume2 } from "lucide-react";
+import { Download, ExternalLink, FileText, ImageOff, Inbox, Play, Volume2 } from "lucide-react";
 
 import type { MediaItem, Message } from "../types";
-import { cleanMessageContent, dayKey, formatDayLabel, formatTime, mediaLabel } from "../utils";
+import { cleanMessageContent, dayKey, formatDayLabel, formatTime, mediaLabel, sourceHue } from "../utils";
 import ImageViewer from "./ImageViewer";
 
 type FeedDensity = "reading" | "console";
@@ -55,6 +55,7 @@ export default function MessageFeed({
           <div className="feed-end">已显示全部匹配消息</div>
         ) : !initialLoading ? (
           <div className="empty-state">
+            <Inbox size={28} aria-hidden="true" />
             <strong>没有匹配消息</strong>
             <span>调整来源、媒体类型或关键词后再试。</span>
           </div>
@@ -87,11 +88,18 @@ export function MessageCard({
   const titleId = `message-${message.id}-title`;
   const content = cleanMessageContent(message.content);
   const mediaCount = mediaItems.length >= 5 ? "many" : String(Math.max(mediaItems.length, 1));
+  const markHue = sourceHue(`${message.chat_id ?? source}`);
   return (
     <article className={`message-card ${density === "console" ? "is-console" : "is-reading"}`} aria-labelledby={titleId}>
       <header className="message-byline">
         <div className="message-byline-main">
-          {density === "console" ? <span className="source-mark" aria-hidden="true">{source.slice(0, 1).toUpperCase()}</span> : null}
+          <span
+            className={`source-mark ${density === "reading" ? "is-reading-mark" : ""}`}
+            style={density === "reading" ? { background: `color-mix(in srgb, hsl(${markHue} 70% 55%) 20%, var(--paper))` } : undefined}
+            aria-hidden="true"
+          >
+            {source.slice(0, 1).toUpperCase()}
+          </span>
           <h3 id={titleId}>{source}</h3>
           <time dateTime={message.message_time}>{formatTime(message.message_time)}</time>
           {speaker !== source ? <span className="byline-speaker">{speaker}</span> : null}
@@ -130,6 +138,7 @@ function MediaAttachment({
   onOpenImage: (image: OpenImage, trigger: HTMLButtonElement | null) => void;
 }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const imageButtonRef = useRef<HTMLButtonElement>(null);
   const source = message.chat_title || "未知来源";
   const speaker = message.sender_name || "未知发送者";
@@ -174,7 +183,7 @@ function MediaAttachment({
   if (type === "video" && item.role === "poster") {
     return (
       <a className="video-poster" href={fallbackUrl} target="_blank" rel="noopener noreferrer">
-        <img src={item.url} alt={`${source}中${speaker}发布的视频封面`} width="800" height="450" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+        <img className={loaded ? "is-loaded" : ""} src={item.url} alt={`${source}中${speaker}发布的视频封面`} width="800" height="450" loading="lazy" decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
         <span className="play-mark" aria-hidden="true"><Play size={22} fill="currentColor" /></span>
         <span>打开原文播放</span>
       </a>
@@ -192,13 +201,14 @@ function MediaAttachment({
       }, imageButtonRef.current)}
     >
       <img
-        className="media-image-contained"
+        className={`media-image-contained${loaded ? " is-loaded" : ""}`}
         src={item.url}
         alt={`${source}中${speaker}发布的图片 ${index + 1}`}
         width="800"
         height="500"
         loading="lazy"
         decoding="async"
+        onLoad={() => setLoaded(true)}
         onError={() => setFailed(true)}
       />
     </button>

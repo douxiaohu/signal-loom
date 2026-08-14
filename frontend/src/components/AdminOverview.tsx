@@ -1,3 +1,5 @@
+import { Activity, GitBranch, RadioTower, ShieldAlert, Users } from "lucide-react";
+
 import type { AdminOverview, AdminView, Group } from "../types";
 import { formatCount, formatDate } from "../utils";
 
@@ -29,22 +31,27 @@ export default function AdminOverview({
       </header>
       <section className="stat-grid" aria-label="关键指标">
         <button type="button" className="stat-card" onClick={() => onOpen("visits")}>
+          <span className="stat-icon"><Users size={16} aria-hidden="true" /></span>
           <span>今日独立 IP</span><strong>{formatCount(visits.today_unique)}</strong>
           <small>累计 {formatCount(visits.unique_ips)} 个用户</small>
         </button>
         <button type="button" className="stat-card" onClick={() => onOpen("visits")}>
+          <span className="stat-icon"><Activity size={16} aria-hidden="true" /></span>
           <span>今日访问</span><strong>{formatCount(visits.today)}</strong>
           <small>近 24 小时 {formatCount(visits.last_24h)}</small>
         </button>
         <button type="button" className="stat-card" onClick={() => onOpen("sources")}>
+          <span className="stat-icon"><RadioTower size={16} aria-hidden="true" /></span>
           <span>采集来源</span><strong>{formatCount(sources.enabled)} / {formatCount(sources.total)}</strong>
           <small>公开 {formatCount(sources.public)} · 异常 {formatCount(sources.unhealthy)}</small>
         </button>
         <button type="button" className="stat-card" onClick={() => onOpen("github")}>
+          <span className="stat-icon"><GitBranch size={16} aria-hidden="true" /></span>
           <span>GitHub 中文解读</span><strong>{formatCount(github.translated_count)} / {formatCount(github.repository_count)}</strong>
           <small>{github.ai_enabled ? (github.ai_model || "已启用") : "未启用 AI"} · 采集 {github.collection.status}</small>
         </button>
         <button type="button" className="stat-card" onClick={() => onOpen("alerts")}>
+          <span className="stat-icon"><ShieldAlert size={16} aria-hidden="true" /></span>
           <span>新规则命中</span><strong>{formatCount(data.alerts.new_count)}</strong>
           <small>进入规则模块处理</small>
         </button>

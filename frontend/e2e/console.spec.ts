@@ -181,8 +181,56 @@ test("paper theme keeps the admin media filter readable", async ({ page }) => {
     };
   });
 
-  expect(colors.background).not.toBe("rgb(9, 24, 39)");
-  expect(colors.color).toBe("rgb(16, 42, 53)");
+  expect(colors.background).toBe("rgb(27, 34, 43)");
+  expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
+});
+
+test("dark themes keep inverted controls readable", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("tm-theme", "midnight"));
+  await installApi(page);
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "频道资讯" })).toBeVisible();
+  for (const selector of [".site-nav a.active", ".media-chip.active", ".site-search button"]) {
+    const colors = await elementColors(page.locator(selector).first());
+    expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
+  }
+  await page.goto("/github/");
+  await expect(page.getByRole("heading", { name: "GitHub 趋势" })).toBeVisible();
+  const periodColors = await elementColors(page.locator(".period-switch button.active"));
+  expect(periodColors.contrast).toBeGreaterThanOrEqual(4.5);
+});
+
+test("admin message cards follow the console surface", async ({ page }) => {
+  await installApi(page);
+  await page.goto("/admin/");
+  await expect(page.getByRole("heading", { name: "管理中心" })).toBeVisible();
+  await page.getByRole("button", { name: "消息检索" }).click();
+  const card = page.locator(".message-card.is-console").first();
+  await expect(card).toBeVisible();
+  const surfaces = await card.evaluate((node) => {
+    const style = getComputedStyle(node);
+    const column = getComputedStyle(node.closest(".timeline-column") as HTMLElement);
+    return { cardBg: style.backgroundColor, columnBg: column.backgroundColor };
+  });
+  expect(surfaces.cardBg).not.toBe("rgb(255, 255, 255)");
+  expect(surfaces.cardBg).toBe(surfaces.columnBg);
+});
+
+test("github toolbar stays on one line on desktop", async ({ page }, testInfo) => {
+  test.skip((testInfo.project.use.viewport as { width: number }).width < 1000, "desktop layout only");
+  await installApi(page);
+  await page.goto("/github/");
+  await expect(page.getByText("用于构建 FastAPI 智能体服务的工具包。")).toBeVisible();
+  const height = await page.locator(".github-toolbar").evaluate((node) => node.getBoundingClientRect().height);
+  expect(height).toBeLessThan(60);
+});
+
+test("light theme keeps secondary text readable", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("tm-theme", "paper"));
+  await installApi(page);
+  await page.goto("/");
+  await expect(page.getByText("供应链组件出现高危漏洞，请优先确认受影响版本。")).toBeVisible();
+  const colors = await elementColors(page.locator(".day-label").first(), "body");
   expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
 });
 
@@ -196,4 +244,30 @@ test("reduced motion stops the admin signal pulse", async ({ page }) => {
 
 function json(route: Route, body: unknown) {
   return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+}
+
+async function elementColors(locator: import("@playwright/test").Locator, backgroundSelector = "") {
+  return locator.evaluate((node, bgSelector) => {
+    const style = getComputedStyle(node);
+    const channels = (value: string) => {
+      const values = value.match(/[\d.]+/g)?.map(Number) || [];
+      return value.startsWith("color(srgb") ? values.slice(0, 3).map((item) => item * 255) : values.slice(0, 3);
+    };
+    const luminance = (value: string) => {
+      const [red, green, blue] = channels(value).map((item) => {
+        const channel = item / 255;
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+    };
+    const backgroundNode = bgSelector ? (document.querySelector(bgSelector) as HTMLElement | null) : null;
+    const background = backgroundNode ? getComputedStyle(backgroundNode).backgroundColor : style.backgroundColor;
+    const foreground = luminance(style.color);
+    const backgroundLuminance = luminance(background);
+    return {
+      background,
+      color: style.color,
+      contrast: (Math.max(foreground, backgroundLuminance) + 0.05) / (Math.min(foreground, backgroundLuminance) + 0.05),
+    };
+  }, backgroundSelector);
 }

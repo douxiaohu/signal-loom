@@ -1,9 +1,26 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "node:path";
 
+function mpaEntryRoutes(): Plugin {
+  return {
+    name: "mpa-entry-routes",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const url = req.url || "";
+        const bare = url.split("?")[0];
+        const suffix = url.slice(bare.length);
+        if ((bare === "/github" || bare === "/admin") && !url.includes(".")) {
+          req.url = bare + "/index.html" + suffix;
+        }
+        next();
+      });
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), mpaEntryRoutes()],
   test: {
     environment: "jsdom",
     globals: true,

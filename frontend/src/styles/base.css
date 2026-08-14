@@ -20,7 +20,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 summary:focus-visible,
-a:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 
 .skip-link {
   position: fixed;
@@ -87,8 +87,8 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
   border-radius: 999px;
   font-weight: 650;
 }
-.primary-button { background: var(--text); color: #fff; }
-.primary-button:hover:not(:disabled) { background: var(--brand); }
+.primary-button { background: var(--control-bg); color: var(--control-fg); }
+.primary-button:hover:not(:disabled) { background: var(--control-hover-bg); color: var(--control-hover-fg); }
 .secondary-button,
 .logout-button,
 .icon-button {
@@ -139,6 +139,7 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
   color: var(--danger);
 }
 .form-error { margin: 0; color: var(--danger); font-size: 13px; }
+.empty-state svg, .github-empty svg { margin: 0 auto 2px; }
 .empty-state, .feed-end, .github-empty {
   display: grid;
   gap: 6px;
@@ -204,8 +205,8 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
   text-decoration: none;
 }
 .site-nav a.active {
-  background: var(--text);
-  color: #fff;
+  background: var(--control-bg);
+  color: var(--control-fg);
 }
 .site-search {
   min-height: 38px;
@@ -234,25 +235,13 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
   padding: 0 14px;
   border: 0;
   border-radius: 999px;
-  background: var(--text);
-  color: #fff;
+  background: var(--control-bg);
+  color: var(--control-fg);
   font-size: 13px;
   font-weight: 650;
 }
-.site-search button:hover { background: var(--brand); }
+.site-search button:hover { background: var(--control-hover-bg); color: var(--control-hover-fg); }
 .header-actions { display: flex; align-items: center; gap: 8px; }
-.admin-entry {
-  min-height: 36px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 13px;
-  text-decoration: none;
-}
-.admin-entry:hover { color: var(--text); border-color: var(--brand); }
 
 .viewer-open { overflow: hidden; }
 .image-viewer-backdrop {
@@ -311,8 +300,6 @@ a:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
 }
 @media (max-width: 680px) {
   .theme-picker-label { display: none; }
-  .admin-entry { width: 36px; padding: 0; overflow: hidden; color: transparent; font-size: 0; }
-  .admin-entry::after { content: "管"; color: var(--brand); font-size: 13px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,10 +1,19 @@
 .message-list { display: grid; gap: 0; outline: none; }
 .message-list:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; }
 .day-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 22px 0 8px;
   color: var(--soft);
   font-size: 12px;
   font-weight: 650;
+}
+.day-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line-soft);
 }
 .day-label:first-child { margin-top: 4px; }
 
@@ -91,7 +100,11 @@
   max-width: 100%;
   object-fit: contain;
   background: transparent;
+  opacity: 0;
+  transition: opacity 250ms ease;
 }
+.media-image-contained.is-loaded,
+.video-poster img.is-loaded { opacity: 1; }
 .media-count-1 .media-image-trigger,
 .media-count-1 .media-video,
 .media-count-1 .video-poster { max-height: 320px; }
@@ -143,6 +156,7 @@
 .message-identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .source-mark {
   flex: 0 0 auto;
+  align-self: center;
   width: 28px;
   height: 28px;
   display: grid;
@@ -152,6 +166,12 @@
   color: var(--text);
   font-size: 12px;
   font-weight: 680;
+}
+.message-card.is-reading .source-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  font-size: 11px;
 }
 .media-badge, .state {
   padding: 2px 7px;
@@ -165,9 +185,16 @@
   height: 12px;
   border-radius: 6px;
   background: color-mix(in srgb, var(--line) 70%, var(--paper));
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
 }
 .message-skeleton span:first-child { width: 36%; }
-.message-skeleton span:last-child { width: 72%; height: 72px; }
+.message-skeleton span:nth-child(2) { animation-delay: 0.15s; }
+.message-skeleton span:last-child { width: 72%; height: 72px; animation-delay: 0.3s; }
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
 
 @media (max-width: 680px) {
   .message-text { font-size: 15.5px; }

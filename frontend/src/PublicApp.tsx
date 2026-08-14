@@ -167,6 +167,11 @@ export default function PublicApp() {
       <div className="public-layout">
         <PublicSourceList activeChatId={filters.chatId} sources={sources} onSelect={selectSource} />
         <section className="public-timeline" aria-busy={loading}>
+          <div className="public-context">
+            <p className="section-kicker">公开时间线</p>
+            <h2>{activeSource}</h2>
+            <p>{loading && !messages.length ? "正在同步…" : `${messages.length} 条消息`}{filters.query ? ` · 关键词“${filters.query}”` : ""}</p>
+          </div>
           <div className="public-toolbar">
             <div className="media-chips" role="group" aria-label="媒体类型">
               {publicMediaOptions.map((option) => (
@@ -183,7 +188,6 @@ export default function PublicApp() {
             </div>
             {loading ? <span className="public-loading">正在更新…</span> : null}
           </div>
-          {filters.query ? <p className="public-query-hint">关键词：“{filters.query}”</p> : null}
           {loading && !messages.length ? (
             <span className="sr-only" role="status" aria-label={`正在加载${activeSource}消息`}>
               正在加载{activeSource}消息

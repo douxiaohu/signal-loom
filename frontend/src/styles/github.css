@@ -27,7 +27,7 @@
   font-size: 13px;
   font-weight: 600;
 }
-.period-switch button.active { background: var(--text); color: #fff; }
+.period-switch button.active { background: var(--control-bg); color: var(--control-fg); }
 .github-selects { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .github-selects label {
   display: flex;
@@ -44,7 +44,7 @@
   background: var(--paper);
   color: var(--text);
 }
-.github-status { color: var(--soft); font-size: 12px; width: 100%; }
+.github-status { margin-left: auto; color: var(--soft); font-size: 12px; white-space: nowrap; }
 .github-ranking-head {
   display: flex;
   align-items: baseline;
@@ -59,15 +59,22 @@
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) auto;
   gap: 8px 12px;
-  padding: 12px 4px;
+  margin: 0 -10px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--line-soft);
+  border-radius: 10px;
+  transition: background 120ms ease;
 }
+.repo-row:hover { background: color-mix(in srgb, var(--text) 3.5%, transparent); }
 .repo-rank {
   color: var(--soft);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   padding-top: 3px;
 }
+.repo-rank-top1 { color: var(--warn); font-weight: 720; }
+.repo-rank-top2 { color: var(--soft); font-weight: 720; }
+.repo-rank-top3 { color: color-mix(in srgb, var(--warn) 55%, var(--danger)); font-weight: 720; }
 .repo-main { min-width: 0; }
 .repo-path {
   display: flex;
@@ -117,6 +124,15 @@
 .repo-details[open] summary { margin-bottom: 8px; }
 .repo-details p { margin: 0 0 6px; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .repo-details b { margin-right: 6px; color: var(--text); font-weight: 650; }
+.lang-bar {
+  display: flex;
+  height: 6px;
+  margin: 6px 0 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line-soft);
+}
+.lang-bar span { display: block; height: 100%; }
 .repo-topics { display: flex; flex-wrap: wrap; gap: 6px; }
 .repo-topics span {
   padding: 2px 7px;
@@ -131,8 +147,13 @@
   height: 56px;
   border-radius: 10px;
   background: color-mix(in srgb, var(--line) 55%, var(--paper));
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
 }
+.github-skeletons div:nth-child(2) { animation-delay: 0.15s; }
+.github-skeletons div:nth-child(3) { animation-delay: 0.3s; }
 .github-baseline-note { margin: 16px 0 0; color: var(--soft); font-size: 12px; line-height: 1.5; }
+.github-empty { display: grid; justify-items: center; gap: 6px; }
+.github-empty svg { color: var(--soft); }
 
 @media (max-width: 680px) {
   .github-shell { width: 100%; padding: 0 12px calc(20px + env(safe-area-inset-bottom)); }

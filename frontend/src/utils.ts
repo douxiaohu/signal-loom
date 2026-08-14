@@ -104,3 +104,15 @@ export function errorHelp(error: string) {
 export function isMediaFilter(value: string): value is MediaFilter {
   return mediaOptions.some((item) => item.value === value);
 }
+
+export function sourceHue(seed: string): number {
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash) % 360;
+}
+
+export function languageHue(seed: string): number {
+  return (sourceHue(seed) + 137) % 360;
+}

@@ -66,6 +66,9 @@
 .public-source-option small { margin-top: 2px; color: var(--soft); font-size: 12px; }
 
 .public-timeline { min-width: 0; }
+.public-context { margin-bottom: 10px; }
+.public-context h2 { margin: 0; font-size: 18px; letter-spacing: -0.03em; }
+.public-context p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
 .public-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -85,12 +88,11 @@
   font-size: 13px;
 }
 .media-chip.active {
-  border-color: var(--text);
-  background: var(--text);
-  color: #fff;
+  border-color: var(--control-bg);
+  background: var(--control-bg);
+  color: var(--control-fg);
 }
 .public-loading { color: var(--soft); font-size: 12px; }
-.public-query-hint { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
 
 @media (max-width: 900px) {
   .public-shell { width: min(100% - 24px, 820px); }

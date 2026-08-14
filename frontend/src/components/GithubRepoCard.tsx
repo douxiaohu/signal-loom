@@ -1,5 +1,5 @@
 import type { GithubPeriod, GithubRepository } from "../types";
-import { formatCount } from "../utils";
+import { formatCount, languageHue } from "../utils";
 
 const periodLabels: Record<GithubPeriod, string> = {
   daily: "24 小时",
@@ -10,9 +10,10 @@ const periodLabels: Record<GithubPeriod, string> = {
 export default function GithubRepoCard({ repository, period }: { repository: GithubRepository; period: GithubPeriod }) {
   const hasAiExplanation = Boolean(repository.ai_summary_zh && repository.ai_problem_zh);
   const languageBreakdown = repository.language_breakdown || [];
+  const rankClass = repository.rank <= 3 ? ` repo-rank-top${repository.rank}` : "";
   return (
     <article className="repo-row">
-      <div className="repo-rank" aria-label={`第 ${repository.rank} 名`}>{repository.rank}</div>
+      <div className={`repo-rank${rankClass}`} aria-label={`第 ${repository.rank} 名`}>{repository.rank}</div>
       <div className="repo-main">
         <div className="repo-path">
           <span>{repository.owner}</span><b>/</b><strong>{repository.name}</strong>
@@ -28,7 +29,17 @@ export default function GithubRepoCard({ repository, period }: { repository: Git
               </>
             ) : null}
             {languageBreakdown.length ? (
-              <p><b>语言构成</b>{languageBreakdown.slice(0, 5).map((item) => `${item.language} ${item.percentage}%`).join(" · ")}</p>
+              <>
+                <p><b>语言构成</b>{languageBreakdown.slice(0, 5).map((item) => `${item.language} ${item.percentage}%`).join(" · ")}</p>
+                <div className="lang-bar" aria-hidden="true">
+                  {languageBreakdown.slice(0, 5).map((item) => (
+                    <span
+                      key={item.language}
+                      style={{ width: `${item.percentage}%`, background: `hsl(${languageHue(item.language)} 60% 52%)` }}
+                    />
+                  ))}
+                </div>
+              </>
             ) : null}
             {repository.topics.length ? (
               <div className="repo-topics">

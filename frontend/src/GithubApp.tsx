@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, SearchX } from "lucide-react";
 
 import { fetchGithubRankings, type GithubFilters } from "./github-api";
 import GithubRepoCard from "./components/GithubRepoCard";
@@ -167,7 +167,7 @@ export default function GithubApp() {
         </header>
         {error ? <div className="inline-error"><strong>加载失败</strong><span>{error}</span></div> : null}
         {!loading && !repositories.length && !error ? (
-          <div className="github-empty"><strong>没有匹配的仓库</strong><span>尝试更换语言、周期或搜索关键词。</span></div>
+          <div className="github-empty"><SearchX size={28} aria-hidden="true" /><strong>没有匹配的仓库</strong><span>尝试更换语言、周期或搜索关键词。</span></div>
         ) : null}
         <div className="repo-list">
           {repositories.map((repository) => (
