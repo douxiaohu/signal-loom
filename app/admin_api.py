@@ -192,6 +192,64 @@ async def admin_media(
     return FileResponse(cached.path, media_type=cached.media_type, headers={"Cache-Control": "private, no-store"})
 
 
+@router.get("/visits")
+async def list_visits(
+    request: Request,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0, le=10000),
+):
+    storage: SQLiteStorage = request.app.state.storage
+    return {
+        "items": storage.list_site_visits(limit=limit, offset=offset),
+        "stats": storage.site_visit_stats(),
+    }
+
+
+@router.get("/github/status")
+async def github_status(request: Request):
+    storage: SQLiteStorage = request.app.state.storage
+    config = request.app.state.config
+    collector = getattr(request.app.state, "github_collector", None)
+    run = storage.get_latest_github_collection_run() or {}
+    return {
+        "enabled": bool(config.github_enabled),
+        "ai_enabled": bool(config.github_ai_enabled and config.github_ai_api_key and config.github_ai_model),
+        "ai_model": config.github_ai_model or "",
+        "refreshing": bool(collector and getattr(collector, "is_running", False)),
+        "collection": {
+            "status": str(run.get("status") or "never"),
+            "started_at": run.get("started_at"),
+            "finished_at": run.get("finished_at"),
+            "fetched_count": int(run.get("fetched_count") or 0),
+            "saved_count": int(run.get("saved_count") or 0),
+            "error": run.get("error"),
+            "rate_limit_remaining": run.get("rate_limit_remaining"),
+        },
+        **storage.github_ai_status(),
+    }
+
+
+@router.get("/overview")
+async def admin_overview(request: Request):
+    storage: SQLiteStorage = request.app.state.storage
+    stale = request.app.state.config.source_stale_after_seconds
+    sources = [source_to_dict(storage, source, stale_after_seconds=stale) for source in storage.list_sources()]
+    unhealthy = [source for source in sources if source["health_status"] in {"unknown", "stale", "error"}]
+    matches = storage.list_alert_matches(status="new")
+    return {
+        "visits": storage.site_visit_stats(),
+        "sources": {
+            "total": len(sources),
+            "enabled": sum(1 for source in sources if source["enabled"]),
+            "public": sum(1 for source in sources if source["public_visible"] and source["enabled"]),
+            "unhealthy": len(unhealthy),
+            "items": sources,
+        },
+        "github": await github_status(request),
+        "alerts": {"new_count": len(matches)},
+    }
+
+
 @router.get("/operations/summary")
 async def operations_summary(request: Request):
     storage: SQLiteStorage = request.app.state.storage

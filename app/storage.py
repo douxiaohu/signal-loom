@@ -308,6 +308,23 @@ class SQLiteStorage:
             _ensure_column(conn, "sources", "locator", "TEXT NOT NULL DEFAULT ''")
             _ensure_column(conn, "sources", "config_json", "TEXT NOT NULL DEFAULT '{}'")
             conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS site_visits (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    visited_at TEXT NOT NULL,
+                    ip TEXT NOT NULL,
+                    path TEXT NOT NULL,
+                    method TEXT NOT NULL DEFAULT 'GET',
+                    user_agent TEXT NOT NULL DEFAULT '',
+                    referer TEXT NOT NULL DEFAULT ''
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_site_visits_visited_at ON site_visits(visited_at DESC)"
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_site_visits_ip ON site_visits(ip)")
+            conn.execute(
                 "UPDATE sources SET adapter = source_type WHERE adapter = '' OR adapter IS NULL"
             )
             conn.execute(
@@ -1631,6 +1648,107 @@ class SQLiteStorage:
                 "SELECT * FROM github_collection_runs ORDER BY id DESC LIMIT 1"
             ).fetchone()
         return dict(row) if row is not None else None
+
+    def record_site_visit(
+        self,
+        *,
+        ip: str,
+        path: str,
+        method: str = "GET",
+        user_agent: str = "",
+        referer: str = "",
+        visited_at: Optional[str] = None,
+    ) -> None:
+        stamp = visited_at or utc_now_iso()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO site_visits(visited_at, ip, path, method, user_agent, referer)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (stamp, ip[:64], path[:300], method[:16], user_agent[:300], referer[:300]),
+            )
+            conn.execute(
+                "DELETE FROM site_visits WHERE visited_at < datetime('now', '-90 days')"
+            )
+
+    def list_site_visits(self, *, limit: int = 100, offset: int = 0) -> List[Dict[str, object]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, visited_at, ip, path, method, user_agent, referer
+                FROM site_visits
+                ORDER BY id DESC
+                LIMIT ? OFFSET ?
+                """,
+                (max(1, min(limit, 500)), max(0, offset)),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def site_visit_stats(self) -> Dict[str, object]:
+        with self._connect() as conn:
+            total = conn.execute("SELECT COUNT(*) AS n FROM site_visits").fetchone()["n"]
+            unique_ips = conn.execute("SELECT COUNT(DISTINCT ip) AS n FROM site_visits").fetchone()["n"]
+            today = conn.execute(
+                "SELECT COUNT(*) AS n FROM site_visits WHERE visited_at >= date('now')"
+            ).fetchone()["n"]
+            today_unique = conn.execute(
+                "SELECT COUNT(DISTINCT ip) AS n FROM site_visits WHERE visited_at >= date('now')"
+            ).fetchone()["n"]
+            last_24h = conn.execute(
+                "SELECT COUNT(*) AS n FROM site_visits WHERE visited_at >= datetime('now', '-1 day')"
+            ).fetchone()["n"]
+            last_7d_unique = conn.execute(
+                "SELECT COUNT(DISTINCT ip) AS n FROM site_visits WHERE visited_at >= datetime('now', '-7 days')"
+            ).fetchone()["n"]
+        return {
+            "total": int(total or 0),
+            "unique_ips": int(unique_ips or 0),
+            "today": int(today or 0),
+            "today_unique": int(today_unique or 0),
+            "last_24h": int(last_24h or 0),
+            "last_7d_unique": int(last_7d_unique or 0),
+        }
+
+    def github_ai_status(self) -> Dict[str, object]:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN ai_generated_at IS NOT NULL AND TRIM(ai_summary_zh) != '' THEN 1 ELSE 0 END) AS translated,
+                    MAX(ai_generated_at) AS last_ai_at
+                FROM github_repositories
+                """
+            ).fetchone()
+            pending = conn.execute(
+                """
+                SELECT full_name, language, stars, ai_model, ai_generated_at
+                FROM github_repositories
+                WHERE ai_generated_at IS NULL OR TRIM(ai_summary_zh) = ''
+                ORDER BY stars DESC
+                LIMIT 20
+                """
+            ).fetchall()
+            recent = conn.execute(
+                """
+                SELECT full_name, language, stars, ai_model, ai_generated_at
+                FROM github_repositories
+                WHERE ai_generated_at IS NOT NULL AND TRIM(ai_summary_zh) != ''
+                ORDER BY ai_generated_at DESC
+                LIMIT 10
+                """
+            ).fetchall()
+        total = int(row["total"] or 0) if row else 0
+        translated = int(row["translated"] or 0) if row else 0
+        return {
+            "repository_count": total,
+            "translated_count": translated,
+            "pending_count": max(total - translated, 0),
+            "last_ai_at": row["last_ai_at"] if row else None,
+            "pending": [dict(item) for item in pending],
+            "recent": [dict(item) for item in recent],
+        }
 
     def _match_alert_rules(self, conn: sqlite3.Connection, message_db_id: int) -> None:
         message = conn.execute("SELECT * FROM messages WHERE id = ?", (int(message_db_id),)).fetchone()

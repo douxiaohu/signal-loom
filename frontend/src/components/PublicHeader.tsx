@@ -30,7 +30,6 @@ export default function PublicHeader({ onSubmit, query, onQueryChange }: PublicH
         <button type="submit">搜索</button>
       </form>
       <div className="header-actions">
-        <a className="admin-entry" href="/admin">管理员入口</a>
         <ThemeSwitcher />
       </div>
     </header>

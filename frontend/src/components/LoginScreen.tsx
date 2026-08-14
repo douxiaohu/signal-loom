@@ -27,7 +27,7 @@ export default function LoginScreen({ error, loading, onLogin }: LoginScreenProp
         <div className="login-brand" aria-hidden="true"><ShieldCheck size={26} /></div>
         <p className="eyebrow">管理入口</p>
         <h1 id="login-title">管理中心</h1>
-        <p className="login-copy">维护来源、采集状态和监测规则。用管理密钥建立 12 小时会话，密钥不会写入浏览器存储。</p>
+        <p className="login-copy">此后台与前台阅读页分离，不在公开页露出入口。用管理密钥建立 12 小时会话，密钥不会写入浏览器存储。</p>
         <form onSubmit={submit}>
           <label htmlFor="admin-key">管理密钥</label>
           <div className="key-field">

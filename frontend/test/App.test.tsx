@@ -60,6 +60,14 @@ function installBaseFetch(
         return json({ generated_at: new Date().toISOString(), sources: [group], unhealthy_sources: [], public_source_count: 1, source_count: 1 });
       }
       if (url.pathname === "/api/admin/matches" || url.pathname === "/api/admin/rules") return json({ items: [] });
+      if (url.pathname === "/api/admin/overview") return json({
+        visits: { total: 0, unique_ips: 0, today: 0, today_unique: 0, last_24h: 0, last_7d_unique: 0 },
+        sources: { total: 1, enabled: 1, public: 1, unhealthy: 0, items: [group] },
+        github: { enabled: true, ai_enabled: false, ai_model: "", refreshing: false, repository_count: 0, translated_count: 0, pending_count: 0, last_ai_at: null, pending: [], recent: [], collection: { status: "never", started_at: null, finished_at: null, fetched_count: 0, saved_count: 0, error: null, rate_limit_remaining: null } },
+        alerts: { new_count: 0 }
+      });
+      if (url.pathname === "/api/admin/visits") return json({ items: [], stats: { total: 0, unique_ips: 0, today: 0, today_unique: 0, last_24h: 0, last_7d_unique: 0 } });
+      if (url.pathname === "/api/admin/github/status") return json({ enabled: true, ai_enabled: false, ai_model: "", refreshing: false, repository_count: 0, translated_count: 0, pending_count: 0, last_ai_at: null, pending: [], recent: [], collection: { status: "never", started_at: null, finished_at: null, fetched_count: 0, saved_count: 0, error: null, rate_limit_remaining: null } });
       if (url.pathname === "/api/admin/messages") return messageHandler(url, init);
       throw new Error(`Unexpected request: ${url.pathname}`);
     })
@@ -82,6 +90,12 @@ describe("App", () => {
         if (url.pathname === "/api/admin/messages") return json({ items: [], has_more: false, next_cursor: null, total: null });
         if (url.pathname === "/api/admin/operations/summary") return json({ sources: [group], unhealthy_sources: [], public_source_count: 1, source_count: 1 });
         if (["/api/admin/matches", "/api/admin/rules"].includes(url.pathname)) return json({ items: [] });
+        if (url.pathname === "/api/admin/overview") return json({
+          visits: { total: 0, unique_ips: 0, today: 0, today_unique: 0, last_24h: 0, last_7d_unique: 0 },
+          sources: { total: 1, enabled: 1, public: 1, unhealthy: 0, items: [group] },
+          github: { enabled: true, ai_enabled: false, ai_model: "", refreshing: false, repository_count: 0, translated_count: 0, pending_count: 0, last_ai_at: null, pending: [], recent: [], collection: { status: "never", started_at: null, finished_at: null, fetched_count: 0, saved_count: 0, error: null, rate_limit_remaining: null } },
+          alerts: { new_count: 0 }
+        });
         throw new Error(`Unexpected request: ${url.pathname}`);
       })
     );
@@ -126,6 +140,7 @@ describe("App", () => {
 
     render(<App />);
     const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "消息检索" }));
     const input = await screen.findByLabelText("关键词");
     await user.clear(input);
     await user.type(input, "新条件");
@@ -147,6 +162,7 @@ describe("App", () => {
 
     render(<App />);
     const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "消息检索" }));
     await screen.findByText("第一条");
     await user.click(screen.getByRole("button", { name: "加载更多" }));
     expect(await screen.findByText("第二条")).toBeInTheDocument();
@@ -157,14 +173,15 @@ describe("App", () => {
     installBaseFetch(() => json({ items: [], has_more: false, next_cursor: null, total: null }));
     render(<App />);
     const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "消息检索" }));
     const query = await screen.findByLabelText("关键词");
     await user.type(query, "漏洞通报");
     await user.selectOptions(screen.getByLabelText("媒体类型"), "document");
     await user.click(screen.getByRole("button", { name: "应用筛选" }));
-    expect(window.location.search).toBe("?media=document&query=%E6%BC%8F%E6%B4%9E%E9%80%9A%E6%8A%A5");
+    expect(window.location.search).toBe("?view=messages&media=document&query=%E6%BC%8F%E6%B4%9E%E9%80%9A%E6%8A%A5");
 
     await act(async () => {
-      window.history.pushState(null, "", "/?query=返回条件");
+      window.history.pushState(null, "", "/?view=messages&query=返回条件");
       window.dispatchEvent(new PopStateEvent("popstate"));
     });
     await waitFor(() => expect(screen.getByLabelText("关键词")).toHaveValue("返回条件"));
@@ -185,6 +202,8 @@ describe("App", () => {
     });
 
     render(<App />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "消息检索" }));
     expect(await screen.findByText("当前消息")).toBeInTheDocument();
     expect(messagePoll).toBeTypeOf("function");
     await act(async () => {
@@ -266,6 +285,7 @@ describe("App", () => {
     );
     render(<App />);
     const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "规则命中" }));
     await user.click(await screen.findByRole("button", { name: "确认" }));
 
     expect(await screen.findByText("规则命中已确认", { selector: ".single-live-region" })).toBeInTheDocument();

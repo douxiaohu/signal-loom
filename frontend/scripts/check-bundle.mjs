@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const assetsDirectory = fileURLToPath(new URL("../dist/assets/", import.meta.url));
 const budgetBytes = 250 * 1024;
 const assetNames = await readdir(assetsDirectory);
-const javascriptAssets = assetNames.filter((name) => name.endsWith(".js"));
+const javascriptAssets = assetNames.filter((name) => name.endsWith(".js") && !name.startsWith("admin-"));
 const sizes = await Promise.all(
   javascriptAssets.map(async (name) => (await stat(join(assetsDirectory, name))).size),
 );

@@ -165,6 +165,26 @@ app = FastAPI(
 )
 
 
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()[:64]
+    real_ip = request.headers.get("x-real-ip", "")
+    if real_ip:
+        return real_ip.strip()[:64]
+    return (request.client.host if request.client else "unknown")[:64]
+
+
+def _should_record_visit(path: str, method: str) -> bool:
+    if method.upper() != "GET":
+        return False
+    if path in {"/", "/github", "/github/"}:
+        return True
+    if path.startswith("/api/public/media"):
+        return False
+    return path.startswith("/api/public/")
+
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -181,6 +201,18 @@ async def add_security_headers(request: Request, call_next):
     elif request.url.path.startswith(("/api/", "/status", "/jobs/", "/telegram/", "/screenshots")):
         response.headers["Cache-Control"] = "private, no-store"
         response.headers["Vary"] = "Cookie"
+    storage = getattr(request.app.state, "storage", None)
+    if storage is not None and _should_record_visit(request.url.path, request.method):
+        try:
+            storage.record_site_visit(
+                ip=_client_ip(request),
+                path=request.url.path,
+                method=request.method,
+                user_agent=request.headers.get("user-agent", ""),
+                referer=request.headers.get("referer", ""),
+            )
+        except Exception:
+            LOGGER.exception("Failed to record site visit")
     return response
 
 

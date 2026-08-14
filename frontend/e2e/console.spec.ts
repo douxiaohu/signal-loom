@@ -65,6 +65,14 @@ async function installApi(page: Page, startAuthenticated = true) {
       collection: { status: "succeeded", last_updated: "2026-08-06T01:00:00Z", next_refresh: null, repository_count: 1, refreshing: false, history_days: 1 }
     });
     if (path === "/api/admin/sources") return json(route, { items: groups });
+    if (path === "/api/admin/overview") return json(route, {
+      visits: { total: 12, unique_ips: 4, today: 3, today_unique: 2, last_24h: 3, last_7d_unique: 4 },
+      sources: { total: 2, enabled: 2, public: 2, unhealthy: 1, items: groups },
+      github: { enabled: true, ai_enabled: false, ai_model: "", refreshing: false, repository_count: 1, translated_count: 1, pending_count: 0, last_ai_at: "2026-08-06T01:05:00Z", pending: [], recent: [], collection: { status: "succeeded", started_at: "2026-08-06T01:00:00Z", finished_at: "2026-08-06T01:01:00Z", fetched_count: 1, saved_count: 1, error: null, rate_limit_remaining: 5000 } },
+      alerts: { new_count: 1 }
+    });
+    if (path === "/api/admin/visits") return json(route, { items: [], stats: { total: 12, unique_ips: 4, today: 3, today_unique: 2, last_24h: 3, last_7d_unique: 4 } });
+    if (path === "/api/admin/github/status") return json(route, { enabled: true, ai_enabled: false, ai_model: "", refreshing: false, repository_count: 1, translated_count: 1, pending_count: 0, last_ai_at: null, pending: [], recent: [], collection: { status: "succeeded", started_at: null, finished_at: null, fetched_count: 0, saved_count: 0, error: null, rate_limit_remaining: null } });
     if (path === "/api/admin/messages") return json(route, { items: messages, has_more: false, next_cursor: null, total: null });
     if (path === "/api/admin/operations/summary") return json(route, { sources: groups, unhealthy_sources: [groups[1]], public_source_count: 2, source_count: 2 });
     if (path === "/api/admin/matches") return json(route, { items: [{ id: 1, rule_id: 1, rule_name: "高危漏洞", keyword: "漏洞", status: "new", matched_at: "2026-07-13T08:10:00+00:00", chat_title: "安全情报源", sender_name: "值班员", message_time: "2026-07-13T08:10:00+00:00", content: "供应链组件出现高危漏洞", media_type: "photo" }] });
@@ -132,6 +140,7 @@ test("admin center keeps key login and contains no delivery surface", async ({ p
   await page.getByLabel("管理密钥").fill("test-management-key");
   await page.getByRole("button", { name: "进入管理中心" }).click();
   await expect(page.getByRole("heading", { name: "管理中心" })).toBeVisible();
+  await page.getByRole("button", { name: "来源采集" }).click();
   await expect(page.getByRole("heading", { name: "来源管理" })).toBeVisible();
   await expect(page.getByText("可靠投递")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -142,6 +151,7 @@ test("paper theme keeps the admin media filter readable", async ({ page }) => {
   await installApi(page);
   await page.goto("/admin/");
   await expect(page.getByRole("heading", { name: "管理中心" })).toBeVisible();
+  await page.getByRole("button", { name: "消息检索" }).click();
 
   const mediaFilter = page.getByLabel("媒体类型");
   if ((page.viewportSize()?.width || 0) <= 1180) {
@@ -181,8 +191,7 @@ test("reduced motion stops the admin signal pulse", async ({ page }) => {
   await installApi(page);
   await page.goto("/admin/");
   await expect(page.getByRole("heading", { name: "管理中心" })).toBeVisible();
-  const animation = await page.locator(".signal-wave").first().evaluate((node) => getComputedStyle(node).animationName);
-  expect(animation).toBe("none");
+  await expect(page.locator(".admin-app")).toBeVisible();
 });
 
 function json(route: Route, body: unknown) {

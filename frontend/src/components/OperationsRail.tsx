@@ -8,6 +8,7 @@ type OperationsRailProps = {
   alerts: AlertMatch[];
   groups: Group[];
   rules: AlertRule[];
+  focus?: "all" | "sources" | "alerts";
   onAcknowledge: (id: number) => Promise<void>;
   onCreateRule: (name: string, keyword: string) => Promise<void>;
   onCreateSource: (name: string, sourceUrl: string) => Promise<void>;
@@ -18,11 +19,12 @@ type OperationsRailProps = {
 };
 
 export default function OperationsRail(props: OperationsRailProps) {
+  const focus = props.focus || "all";
   const unhealthy = props.groups.filter((group) => group.health_status !== "healthy");
   const newAlerts = props.alerts.filter((alert) => alert.status === "new");
   return (
-    <aside className="operations-rail" aria-label="来源健康与监测规则">
-      <section id="source-operations" className="ops-card" tabIndex={-1} aria-labelledby="source-operations-title">
+    <aside className="operations-rail admin-stack" aria-label="来源健康与监测规则">
+      {focus !== "alerts" ? <section id="source-operations" className="ops-card" tabIndex={-1} aria-labelledby="source-operations-title">
         <header><div><p className="section-kicker">运行</p><h2 id="source-operations-title">来源管理</h2></div><strong className={unhealthy.length ? "count-warn" : "count-ok"}>{unhealthy.length ? formatCount(unhealthy.length) : "正常"}</strong></header>
         {props.groups.length ? (
           <table className="source-table">
@@ -60,11 +62,11 @@ export default function OperationsRail(props: OperationsRailProps) {
           </table>
         ) : <p className="empty-copy">暂无来源配置</p>}
         <SourceComposer onCreate={props.onCreateSource} />
-      </section>
-      <section id="alert-operations" className="ops-card" tabIndex={-1} aria-labelledby="alert-operations-title">
+      </section> : null}
+      {focus !== "sources" ? <section id="alert-operations" className="ops-card" tabIndex={-1} aria-labelledby="alert-operations-title">
         <header><div><p className="section-kicker">监测</p><h2 id="alert-operations-title">规则命中</h2></div><strong className={newAlerts.length ? "count-warn" : "count-ok"}>{formatCount(newAlerts.length)}</strong></header>
         <div className="compact-list">
-          {props.alerts.slice(0, 4).map((alert) => (
+          {(focus === "alerts" ? props.alerts : props.alerts.slice(0, 8)).map((alert) => (
             <article className="compact-item" key={alert.id}>
               <div className="compact-title"><ShieldAlert size={16} aria-hidden="true" /><strong>{alert.rule_name}</strong><span className={`state state-${alert.status}`}>{alertStatus(alert.status)}</span></div>
               <p>{alert.content || `[${alert.media_type || "消息"}]`}</p>
@@ -78,7 +80,7 @@ export default function OperationsRail(props: OperationsRailProps) {
           {!props.alerts.length ? <p className="empty-copy">暂无规则命中</p> : null}
         </div>
         <RuleComposer rules={props.rules} onCreate={props.onCreateRule} onToggle={props.onToggleRule} />
-      </section>
+      </section> : null}
     </aside>
   );
 }

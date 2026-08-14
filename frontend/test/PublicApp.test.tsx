@@ -55,7 +55,7 @@ describe("PublicApp", () => {
     expect(await screen.findByRole("heading", { name: "频道资讯" })).toBeInTheDocument();
     expect(await screen.findByText("公开频道消息")).toBeInTheDocument();
     expect(screen.queryByLabelText("管理密钥")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "管理员入口" })).toHaveAttribute("href", "/admin");
+    expect(screen.queryByRole("link", { name: "管理员入口" })).not.toBeInTheDocument();
     await waitFor(() => {
       const paths = vi.mocked(fetch).mock.calls.map(([input]) => new URL(String(input), window.location.origin).pathname);
       expect(paths).not.toContain("/api/session");

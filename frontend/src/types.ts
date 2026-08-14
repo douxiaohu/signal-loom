@@ -104,6 +104,56 @@ export type Session = {
   expires_at: string | number | null;
 };
 
+export type AdminView = "overview" | "sources" | "github" | "visits" | "alerts" | "messages";
+
+export type VisitRecord = {
+  id: number;
+  visited_at: string;
+  ip: string;
+  path: string;
+  method: string;
+  user_agent: string;
+  referer: string;
+};
+
+export type VisitStats = {
+  total: number;
+  unique_ips: number;
+  today: number;
+  today_unique: number;
+  last_24h: number;
+  last_7d_unique: number;
+};
+
+export type GithubAdminStatus = {
+  enabled: boolean;
+  ai_enabled: boolean;
+  ai_model: string;
+  refreshing: boolean;
+  repository_count: number;
+  translated_count: number;
+  pending_count: number;
+  last_ai_at: string | null;
+  pending: Array<{ full_name: string; language: string; stars: number; ai_model: string; ai_generated_at: string | null }>;
+  recent: Array<{ full_name: string; language: string; stars: number; ai_model: string; ai_generated_at: string | null }>;
+  collection: {
+    status: string;
+    started_at: string | null;
+    finished_at: string | null;
+    fetched_count: number;
+    saved_count: number;
+    error: string | null;
+    rate_limit_remaining: number | null;
+  };
+};
+
+export type AdminOverview = {
+  visits: VisitStats;
+  sources: { total: number; enabled: number; public: number; unhealthy: number; items: Group[] };
+  github: GithubAdminStatus;
+  alerts: { new_count: number };
+};
+
 export type Filters = {
   chatId: string;
   media: MediaFilter;
