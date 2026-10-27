@@ -15,11 +15,6 @@ DEFAULT_CRAWL_INTERVAL_SECONDS = 300
 DEFAULT_GROUPS_CONFIG_PATH = "config/groups.yaml"
 DEFAULT_SCREENSHOT_OUTPUT_DIR = "./data/screenshots"
 DEFAULT_MEDIA_CACHE_DIR = "./data/media-cache"
-DEFAULT_GITHUB_REFRESH_INTERVAL_SECONDS = 1800
-DEFAULT_GITHUB_LANGUAGES = (
-    "Python", "JavaScript", "TypeScript", "Java", "Go", "Rust",
-    "C++", "C#", "PHP", "Swift", "Kotlin", "Ruby",
-)
 
 
 @dataclass(frozen=True)
@@ -55,18 +50,6 @@ class AppConfig:
     login_max_attempts: int = 5
     login_window_seconds: int = 900
     source_stale_after_seconds: int = 900
-    github_enabled: bool = True
-    github_token: str = ""
-    github_refresh_interval_seconds: int = DEFAULT_GITHUB_REFRESH_INTERVAL_SECONDS
-    github_languages: tuple[str, ...] = DEFAULT_GITHUB_LANGUAGES
-    github_candidates_per_language: int = 30
-    github_min_stars: int = 20
-    github_ai_enabled: bool = False
-    github_ai_api_key: str = ""
-    github_ai_base_url: str = "https://api.openai.com/v1"
-    github_ai_model: str = ""
-    github_ai_timeout_seconds: int = 45
-    github_ai_repositories_per_refresh: int = 6
 
     def group_for_chat(self, chat_id: int) -> Optional[GroupConfig]:
         return self.groups.get(int(chat_id))
@@ -128,35 +111,6 @@ def load_config(
         login_window_seconds=parse_positive_int(merged.get("LOGIN_WINDOW_SECONDS"), default=900),
         source_stale_after_seconds=parse_positive_int(
             merged.get("SOURCE_STALE_AFTER_SECONDS"), default=900
-        ),
-        github_enabled=parse_bool(merged.get("GITHUB_ENABLED"), default=True),
-        github_token=merged.get("GITHUB_TOKEN", "").strip(),
-        github_refresh_interval_seconds=parse_positive_int(
-            merged.get("GITHUB_REFRESH_INTERVAL_SECONDS"),
-            default=DEFAULT_GITHUB_REFRESH_INTERVAL_SECONDS,
-        ),
-        github_languages=parse_csv(
-            merged.get("GITHUB_LANGUAGES"), default=DEFAULT_GITHUB_LANGUAGES
-        ),
-        github_candidates_per_language=min(
-            100,
-            parse_positive_int(merged.get("GITHUB_CANDIDATES_PER_LANGUAGE"), default=30),
-        ),
-        github_min_stars=parse_positive_int(merged.get("GITHUB_MIN_STARS"), default=20),
-        github_ai_enabled=parse_bool(merged.get("GITHUB_AI_ENABLED"), default=False),
-        github_ai_api_key=merged.get("GITHUB_AI_API_KEY", "").strip(),
-        github_ai_base_url=merged.get(
-            "GITHUB_AI_BASE_URL", "https://api.openai.com/v1"
-        ).strip().rstrip("/"),
-        github_ai_model=merged.get("GITHUB_AI_MODEL", "").strip(),
-        github_ai_timeout_seconds=parse_positive_int(
-            merged.get("GITHUB_AI_TIMEOUT_SECONDS"), default=45
-        ),
-        github_ai_repositories_per_refresh=min(
-            24,
-            parse_positive_int(
-                merged.get("GITHUB_AI_REPOSITORIES_PER_REFRESH"), default=6
-            ),
         ),
     )
 

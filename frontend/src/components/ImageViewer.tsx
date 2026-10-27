@@ -1,50 +1,103 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, ExternalLink, Download } from "lucide-react";
 
+export type OpenImageData = {
+  src: string;
+  originalSrc?: string;
+  alt: string;
+};
 
 type ImageViewerProps = {
-  alt: string;
-  returnFocusRef: React.RefObject<HTMLButtonElement | null>;
   src: string;
+  alt: string;
+  returnFocusRef?: React.RefObject<HTMLButtonElement | null>;
   onClose: () => void;
 };
 
-
-export default function ImageViewer({ alt, returnFocusRef, src, onClose }: ImageViewerProps) {
+export default function ImageViewer({ src, alt, returnFocusRef, onClose }: ImageViewerProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     closeRef.current?.focus();
     document.body.classList.add("viewer-open");
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
         onClose();
         return;
       }
-      if (event.key === "Tab") event.preventDefault();
+      if (event.key === "Tab") {
+        event.preventDefault();
+      }
     }
+
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       document.body.classList.remove("viewer-open");
-      returnFocusRef.current?.focus();
+      returnFocusRef?.current?.focus();
     };
   }, [onClose, returnFocusRef]);
 
   return createPortal(
     <div
-      className="image-viewer-backdrop"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md transition-opacity duration-200"
       role="dialog"
       aria-modal="true"
       aria-label="图片预览"
       onClick={onClose}
     >
-      <button ref={closeRef} className="image-viewer-close" type="button" onClick={onClose} aria-label="关闭图片预览">
-        <X size={22} aria-hidden="true" />
-      </button>
-      <img className="image-viewer-image" src={src} alt={alt} />
+      <div
+        className="relative max-w-[95vw] max-h-[92vh] flex flex-col items-center justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 顶部悬浮控制栏 */}
+        <div className="absolute -top-12 right-0 flex items-center gap-2 z-50">
+          <a
+            href={src}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="在新标签页中打开原图"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 rounded-full backdrop-blur transition-all duration-150"
+          >
+            <ExternalLink size={13} />
+            <span>原图</span>
+          </a>
+
+          <a
+            href={src}
+            download
+            title="下载原图"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 rounded-full backdrop-blur transition-all duration-150"
+          >
+            <Download size={13} />
+            <span>下载</span>
+          </a>
+
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="关闭图片预览"
+            className="p-1.5 text-zinc-300 hover:text-white bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 rounded-full backdrop-blur transition-all duration-150 cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* 高清大图展示 */}
+        <div className="relative overflow-hidden rounded-xl border border-white/10 shadow-2xl bg-zinc-950/90 flex items-center justify-center max-h-[85vh]">
+          <img
+            src={src}
+            alt={alt}
+            className="max-w-[92vw] max-h-[85vh] w-auto h-auto object-contain select-none"
+            loading="eager"
+            decoding="async"
+          />
+        </div>
+      </div>
     </div>,
     document.body
   );

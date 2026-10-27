@@ -1,15 +1,14 @@
-# Telegram 资讯与 GitHub 趋势平台
+# Telegram 频道资讯平台
 
 **当前正式版：1.0.0**
 
-单机可部署的公开资讯聚合服务。采集公开 Telegram 频道（以及可选的 Bot 群组/频道），提供免密浏览、检索和媒体查看；同时定期抓取 GitHub 仓库活跃数据，生成日榜、周榜、月榜。
+单机可部署的公开资讯聚合服务。采集公开 Telegram 频道（以及可选的 Bot 群组/频道），提供免密浏览、检索和媒体查看。
 
 技术栈是 **Python 3.11 + FastAPI + React 19 + SQLite**。默认一个容器、一个进程、一份本地数据库。容器内 uvicorn 绑定 `0.0.0.0:8000`，Compose **只把端口发布到** `127.0.0.1:8000`。公网访问交给同机反向代理或 Tunnel。必须保持 `--workers 1`：采集调度和 SQLite 写者都在同一进程里。
 
 | 入口 | 地址 | 访问控制 |
 | --- | --- | --- |
 | 频道资讯 | `/` | 免密，只展示管理员标记为公开的来源 |
-| GitHub 趋势 | `/github` | 免密 |
 | 管理中心 | `/admin` | 单管理员密钥登录 |
 | 健康检查 | `/health` | 免密，返回 `{"status":"ok"}` |
 
@@ -27,12 +26,11 @@
               uvicorn --workers 1
          +------------+------------+
          | HTTP       | Jobs       |
-         | / /github  | 采集/刷新  |
+         | /          | 频道采集   |
          | /admin     |            |
          +------+-----+-----+------+
                 |           |
          SourceService   FeedService
-         GitHubInsightProduct
                 |           |
      SourceAdapter     SQLite repositories
      telegram_public   data/telegram_forwarder.db
@@ -40,7 +38,6 @@
 ```
 
 - 新来源实现 `SourceAdapter`（`validate_locator` / `allocate_source_id` / `fetch`）。`fetch()` **只拉数据，不写库**。
-- 新榜单实现 `InsightProduct`，并自带表、配置、路由和任务；不要往 `messages` 或 GitHub 表加类型列。
 - 通知有空的 `Notifier` 端口，本轮没有任何通道。企业微信 / 截图 / 投递 HTTP 已从运行时删除；历史 `delivery_*` 表保留在库里，但不提供界面。
 - RSS 等非 Telegram 来源还不入库：`messages.message_id` 仍是整数。下一轮需要 `external_id TEXT` 和管理表单。
 
@@ -51,8 +48,6 @@
 - 只读浏览公开频道消息：来源、关键词、媒体类型、游标分页
 - 图片先加载等比缩略图，点击后再拉原图
 - 可跳转 Telegram 原文
-- GitHub 日 / 周 / 月榜，支持语言、排序和仓库检索
-- 可选 OpenAI 兼容接口，为热门仓库生成中文简述
 
 **管理端**
 
@@ -60,7 +55,6 @@
 - 新来源默认采集、默认不公开
 - 启停采集、立即采集、来源健康、消息检索
 - 监测规则与命中确认 / 解决
-- 手动刷新 GitHub 榜单
 
 **不会再出现的东西**
 
@@ -105,8 +99,6 @@ SESSION_COOKIE_SECURE=true
 APP_ENV=production
 APP_UID=1000
 APP_GID=1000
-GITHUB_ENABLED=true
-GITHUB_TOKEN=
 ```
 
 `config/groups.yaml` 只在 **sources 表为空** 时种入一次。公开频道写成 `source: https://t.me/channel`；Bot 来源写成数字 `chat_id`。种入后公开范围和启停都在 `/admin` 维护。
@@ -125,7 +117,7 @@ docker compose up -d --build
 curl -sS http://127.0.0.1:8000/health
 ```
 
-公开频道启动后立刻抓一次，之后按 `CRAWL_INTERVAL_SECONDS`（默认 300）继续。GitHub 按 `GITHUB_REFRESH_INTERVAL_SECONDS`（默认 1800）刷新。配置了 `TELEGRAM_BOT_TOKEN` 时，才会长轮询 `adapter=telegram_bot` 且已启用的来源。
+公开频道启动后立刻抓一次，之后按 `CRAWL_INTERVAL_SECONDS`（默认 300）继续。配置了 `TELEGRAM_BOT_TOKEN` 时，才会长轮询 `adapter=telegram_bot` 且已启用的来源。
 
 ### HTTPS 反代
 
@@ -202,10 +194,7 @@ Bot 使用真实 Telegram `chat_id`，不再哈希。未公开的 Bot 消息只�
 | `SESSION_SECRET` | 会话 HMAC 密钥，生产至少 32 字节 |
 | `SESSION_COOKIE_SECURE` | 生产必须 `true` |
 | `TELEGRAM_BOT_TOKEN` | 可选。仅 Bot 来源需要 |
-| `GITHUB_TOKEN` | 建议配置（公开仓库只读）。匿名搜索会限流并只采语言列表前 8 项 |
-| `GITHUB_AI_*` | 可选中文解读。失败不影响榜单采集 |
 | `CRAWL_INTERVAL_SECONDS` | 公开频道采集间隔 |
-| `GITHUB_REFRESH_INTERVAL_SECONDS` | GitHub 刷新间隔 |
 
 数据库文件名保持 `data/telegram_forwarder.db`，不要改路径除非你同时改备份脚本。
 
@@ -227,7 +216,7 @@ git pull
 docker compose up -d --build
 ```
 
-schema 只做增量 `ALTER`。已有消息和历史 `delivery_*` 行不会被删除。
+schema 只做增量 `ALTER`。已有消息、历史 `delivery_*` 和 GitHub 行不会被删除。
 
 ## 验证
 
@@ -238,7 +227,7 @@ npm run test
 npm run build
 ```
 
-部署后还可确认调度器注册 `crawl_public_sources`；GitHub 启用时注册 `refresh_github_rankings`；不再注册 `forward_telegram_to_wecom`。
+部署后确认调度器只注册 `crawl_public_sources`，`/github` 和 `/api/public/github/rankings` 返回 404。
 
 ## 项目布局
 
@@ -246,7 +235,7 @@ npm run build
 app/
   main.py                 装配：AppContext、路由、静态资源
   context.py              进程内依赖
-  domain/                 用例：来源、资讯流、洞察产品
+  domain/                 用例：来源、资讯流
   ingest/                 SourceAdapter：telegram_public / telegram_bot
   persistence/sqlite/     连接（busy_timeout=5000）与存储
   jobs/                   JobSpec / JobRunner
@@ -254,7 +243,7 @@ app/
   http/                   错误脱敏等 HTTP 辅助
   security.py             会话 HMAC + sid 表
 frontend/src/
-  features/               公共资讯 / GitHub / 管理入口
+  features/               公共资讯 / 管理入口
 config/groups.example.yaml
 docs/architecture/        模块化单体设计
 ```
@@ -265,7 +254,6 @@ docs/architecture/        模块化单体设计
 | --- | --- | --- |
 | 另一种 Telegram 抓取 | 新 `SourceAdapter`，注册进 `AdapterRegistry` | 改 `SQLiteStorage.create_source` 写死类型 |
 | RSS | 先做 `external_id TEXT` 和表单，再写 adapter | 把 GUID 硬塞进整数 `message_id` |
-| 第二个榜单 | 新 `InsightProduct` + 自己的表/路由/任务 | 往 GitHub 表加产品类型列 |
 | 邮件 / Webhook | 实现 `Notifier` 并挂到 `NotificationService` | 复活 WeCom `Forwarder` |
 | Postgres / 独立采集进程 | 换 repository；先把会话 sid 落库 | 直接把 uvicorn workers 调到 >1 |
 

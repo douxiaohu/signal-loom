@@ -63,11 +63,9 @@ function installBaseFetch(
       if (url.pathname === "/api/admin/overview") return json({
         visits: { total: 0, unique_ips: 0, today: 0, today_unique: 0, last_24h: 0, last_7d_unique: 0 },
         sources: { total: 1, enabled: 1, public: 1, unhealthy: 0, items: [group] },
-        github: { enabled: true, ai_enabled: false, ai_model: "", refreshing: false, repository_count: 0, translated_count: 0, pending_count: 0, last_ai_at: null, pending: [], recent: [], collection: { status: "never", started_at: null, finished_at: null, fetched_count: 0, saved_count: 0, error: null, rate_limit_remaining: null } },
         alerts: { new_count: 0 }
       });
       if (url.pathname === "/api/admin/visits") return json({ items: [], stats: { total: 0, unique_ips: 0, today: 0, today_unique: 0, last_24h: 0, last_7d_unique: 0 } });
-      if (url.pathname === "/api/admin/github/status") return json({ enabled: true, ai_enabled: false, ai_model: "", refreshing: false, repository_count: 0, translated_count: 0, pending_count: 0, last_ai_at: null, pending: [], recent: [], collection: { status: "never", started_at: null, finished_at: null, fetched_count: 0, saved_count: 0, error: null, rate_limit_remaining: null } });
       if (url.pathname === "/api/admin/messages") return messageHandler(url, init);
       throw new Error(`Unexpected request: ${url.pathname}`);
     })
@@ -93,7 +91,6 @@ describe("App", () => {
         if (url.pathname === "/api/admin/overview") return json({
           visits: { total: 0, unique_ips: 0, today: 0, today_unique: 0, last_24h: 0, last_7d_unique: 0 },
           sources: { total: 1, enabled: 1, public: 1, unhealthy: 0, items: [group] },
-          github: { enabled: true, ai_enabled: false, ai_model: "", refreshing: false, repository_count: 0, translated_count: 0, pending_count: 0, last_ai_at: null, pending: [], recent: [], collection: { status: "never", started_at: null, finished_at: null, fetched_count: 0, saved_count: 0, error: null, rate_limit_remaining: null } },
           alerts: { new_count: 0 }
         });
         throw new Error(`Unexpected request: ${url.pathname}`);

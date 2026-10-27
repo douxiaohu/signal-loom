@@ -128,6 +128,23 @@ class SourceHealthTests(unittest.IsolatedAsyncioTestCase):
         finally:
             client.close()
 
+    def test_operations_summary_exposes_failure_streak_volume_and_anomaly_filter(self):
+        source = self.storage.create_source(name="Example", source_url="https://t.me/example")
+        for index, error in enumerate(("timeout", "offline", None)):
+            self.storage.record_source_run(chat_id=source.chat_id, source="x", started_at=f"2026-07-13T08:0{index}:00+00:00", finished_at=f"2026-07-13T08:0{index}:05+00:00", fetched_count=4, saved_count=2, error=error)
+        config = self._config(); app.state.config = config; app.state.storage = self.storage; app.state.session_signer = SessionSigner(config.session_secret, ttl_seconds=3600)
+        client = TestClient(app, base_url="http://testserver")
+        try:
+            client.post("/api/auth/login", json={"api_key": "key"})
+            item = client.get("/api/admin/operations/summary").json()["sources"][0]
+            self.assertEqual(item["consecutive_failures"], 0)
+            self.assertEqual(item["new_message_volume"], 2)
+            self.storage.record_source_run(chat_id=source.chat_id, source="x", started_at="2026-07-13T08:10:00+00:00", finished_at="2026-07-13T08:10:05+00:00", fetched_count=1, saved_count=0, error="offline")
+            item = client.get("/api/admin/operations/summary?anomaly=failures").json()["sources"][0]
+            self.assertEqual(item["consecutive_failures"], 1)
+            self.assertEqual(len(client.get("/api/admin/operations/summary?anomaly=volume").json()["sources"]), 1)
+        finally: client.close()
+
     def _config(self):
         return AppConfig(
             telegram_bot_token="",

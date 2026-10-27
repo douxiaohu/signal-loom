@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "node:path";
 
 function mpaEntryRoutes(): Plugin {
@@ -10,7 +11,7 @@ function mpaEntryRoutes(): Plugin {
         const url = req.url || "";
         const bare = url.split("?")[0];
         const suffix = url.slice(bare.length);
-        if ((bare === "/github" || bare === "/admin") && !url.includes(".")) {
+        if (bare === "/admin" && !url.includes(".")) {
           req.url = bare + "/index.html" + suffix;
         }
         next();
@@ -20,7 +21,10 @@ function mpaEntryRoutes(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), mpaEntryRoutes()],
+  plugins: [tailwindcss(), react(), mpaEntryRoutes()],
+  resolve: {
+    alias: { "@": resolve(__dirname, "src") }
+  },
   test: {
     environment: "jsdom",
     globals: true,
@@ -35,8 +39,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         public: resolve(__dirname, "index.html"),
-        admin: resolve(__dirname, "admin/index.html"),
-        github: resolve(__dirname, "github/index.html")
+        admin: resolve(__dirname, "admin/index.html")
       },
       output: {
         manualChunks: { react: ["react", "react-dom"] }

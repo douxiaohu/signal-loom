@@ -1,3 +1,6 @@
+import CountUp from "../bits/CountUp";
+import ShinyText from "../bits/ShinyText";
+import SpotlightCard from "../bits/SpotlightCard";
 import type { VisitRecord, VisitStats } from "../types";
 import { formatCount, formatDate } from "../utils";
 
@@ -11,18 +14,20 @@ export default function AdminVisits({
   return (
     <div className="admin-stack">
       <header className="admin-page-head">
-        <h1>访问记录</h1>
-        <p>记录前台页面和公开接口访问，不含管理后台自身请求。</p>
+        <div>
+          <h1><ShinyText text="访问记录" /></h1>
+          <p>记录前台页面和公开接口访问，不含管理后台自身请求。</p>
+        </div>
       </header>
       {stats ? (
         <section className="stat-grid">
-          <div className="stat-card"><span>独立用户</span><strong>{formatCount(stats.unique_ips)}</strong><small>按 IP 去重</small></div>
-          <div className="stat-card"><span>今日独立 IP</span><strong>{formatCount(stats.today_unique)}</strong><small>今日访问 {formatCount(stats.today)}</small></div>
-          <div className="stat-card"><span>近 7 日用户</span><strong>{formatCount(stats.last_7d_unique)}</strong><small>近 24 小时 {formatCount(stats.last_24h)}</small></div>
-          <div className="stat-card"><span>累计访问</span><strong>{formatCount(stats.total)}</strong><small>保留约 90 天</small></div>
+          <SpotlightCard className="stat-card"><span>独立用户</span><strong><CountUp to={stats.unique_ips} /></strong><small>按 IP 去重</small></SpotlightCard>
+          <SpotlightCard className="stat-card"><span>今日独立 IP</span><strong><CountUp to={stats.today_unique} /></strong><small>今日访问 {formatCount(stats.today)}</small></SpotlightCard>
+          <SpotlightCard className="stat-card"><span>近 7 日用户</span><strong><CountUp to={stats.last_7d_unique} /></strong><small>近 24 小时 {formatCount(stats.last_24h)}</small></SpotlightCard>
+          <SpotlightCard className="stat-card"><span>累计访问</span><strong><CountUp to={stats.total} /></strong><small>保留约 90 天</small></SpotlightCard>
         </section>
       ) : null}
-      <section className="ops-card">
+      <SpotlightCard as="section" className="ops-card">
         <header><h2>最近访问</h2></header>
         {items.length ? (
           <table className="source-table">
@@ -46,7 +51,7 @@ export default function AdminVisits({
             </tbody>
           </table>
         ) : <p className="empty-copy">还没有访问记录</p>}
-      </section>
+      </SpotlightCard>
     </div>
   );
 }

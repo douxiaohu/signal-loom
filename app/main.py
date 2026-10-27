@@ -17,11 +17,7 @@ from .api_common import message_to_api_dict
 from .config import load_config, validate_security_config
 from .context import AppContext
 from .domain.feed.service import FeedService
-from .domain.insights.github.product import GitHubInsightProduct
 from .domain.sources.service import SourceService
-from .github_ai import RepositoryAiExplainer
-from .github_client import GitHubClient
-from .github_service import GitHubCollector
 from .ingest.registry import build_default_registry
 from .media_cache import MediaCache
 from .notifications.ports import NotificationService
@@ -68,22 +64,6 @@ async def lifespan(app: FastAPI):
         storage=storage,
         crawler=public_crawler,
     )
-    github_collector = GitHubCollector(
-        storage=storage,
-        client=GitHubClient(config.github_token),
-        config=config,
-        ai_explainer=RepositoryAiExplainer(
-            api_key=config.github_ai_api_key,
-            base_url=config.github_ai_base_url,
-            model=config.github_ai_model,
-            timeout_seconds=config.github_ai_timeout_seconds,
-        ),
-    )
-    github_product = GitHubInsightProduct(
-        storage=storage,
-        collector=github_collector,
-        config=config,
-    )
     session_signer = SessionSigner(
         config.session_secret,
         ttl_seconds=config.session_ttl_hours * 3600,
@@ -98,7 +78,6 @@ async def lifespan(app: FastAPI):
         notifications=NotificationService(),
         media=media_cache,
         sessions=session_signer,
-        github_product=github_product,
     )
 
     stop_event = asyncio.Event()
@@ -115,7 +94,7 @@ async def lifespan(app: FastAPI):
         poll_task = asyncio.create_task(poller.run(stop_event))
     else:
         LOGGER.warning("TELEGRAM_BOT_TOKEN unset; telegram_bot sources will not be polled")
-    scheduler = create_collection_scheduler(config, collector, github_collector)
+    scheduler = create_collection_scheduler(config, collector)
     scheduler.start()
 
     app.state.ctx = ctx
@@ -127,8 +106,6 @@ async def lifespan(app: FastAPI):
     )
     app.state.storage = storage
     app.state.collector = collector
-    app.state.github_collector = github_collector
-    app.state.github_product = github_product
     app.state.source_service = source_service
     app.state.feed_service = feed_service
     app.state.media_cache = media_cache
@@ -178,7 +155,7 @@ def _client_ip(request: Request) -> str:
 def _should_record_visit(path: str, method: str) -> bool:
     if method.upper() != "GET":
         return False
-    if path in {"/", "/github", "/github/"}:
+    if path == "/":
         return True
     if path.startswith("/api/public/media"):
         return False
@@ -196,11 +173,16 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-Frame-Options"] = "DENY"
-    if request.url.path.startswith("/api/public/"):
+    path = request.url.path
+    if path.startswith("/assets/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif path.startswith("/api/public/"):
         response.headers.setdefault("Cache-Control", "no-cache")
-    elif request.url.path.startswith(("/api/", "/status", "/jobs/", "/telegram/", "/screenshots")):
+    elif path.startswith(("/api/", "/status", "/jobs/", "/telegram/", "/screenshots")):
         response.headers["Cache-Control"] = "private, no-store"
         response.headers["Vary"] = "Cookie"
+    elif "text/html" in response.headers.get("content-type", ""):
+        response.headers["Cache-Control"] = "no-cache"
     storage = getattr(request.app.state, "storage", None)
     if storage is not None and _should_record_visit(request.url.path, request.method):
         try:
@@ -289,14 +271,20 @@ async def logout(request: Request, response: Response) -> Response:
 
 frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 from .admin_api import router as admin_router
-from .github_api import admin_router as github_admin_router
-from .github_api import public_router as github_public_router
+from .feedback_api import admin_router as feedback_admin_router
+from .feedback_api import router as feedback_router
 from .public_api import router as public_router
 
 app.include_router(public_router)
+app.include_router(feedback_router)
 app.include_router(admin_router)
-app.include_router(github_public_router)
-app.include_router(github_admin_router)
+app.include_router(feedback_admin_router)
+
+
+@app.get("/github", include_in_schema=False)
+@app.get("/github/", include_in_schema=False)
+async def retired_github_page():
+    raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND)
 
 if frontend_dist.exists():
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")

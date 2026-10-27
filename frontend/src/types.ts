@@ -104,7 +104,7 @@ export type Session = {
   expires_at: string | number | null;
 };
 
-export type AdminView = "overview" | "sources" | "github" | "visits" | "alerts" | "messages";
+export type AdminView = "overview" | "sources" | "visits" | "alerts" | "messages";
 
 export type VisitRecord = {
   id: number;
@@ -125,93 +125,23 @@ export type VisitStats = {
   last_7d_unique: number;
 };
 
-export type GithubAdminStatus = {
-  enabled: boolean;
-  ai_enabled: boolean;
-  ai_model: string;
-  refreshing: boolean;
-  repository_count: number;
-  translated_count: number;
-  pending_count: number;
-  last_ai_at: string | null;
-  pending: Array<{ full_name: string; language: string; stars: number; ai_model: string; ai_generated_at: string | null }>;
-  recent: Array<{ full_name: string; language: string; stars: number; ai_model: string; ai_generated_at: string | null }>;
-  collection: {
-    status: string;
-    started_at: string | null;
-    finished_at: string | null;
-    fetched_count: number;
-    saved_count: number;
-    error: string | null;
-    rate_limit_remaining: number | null;
-  };
-};
-
 export type AdminOverview = {
   visits: VisitStats;
   sources: { total: number; enabled: number; public: number; unhealthy: number; items: Group[] };
-  github: GithubAdminStatus;
-  alerts: { new_count: number };
+  alerts: {
+    new_count: number;
+    pending_count?: number;
+    acknowledged_count?: number;
+    resolved_count?: number;
+    rule_count?: number;
+    enabled_rule_count?: number;
+    pending_age_minutes?: number;
+    trend?: Array<{ date: string; count: number }>;
+  };
 };
 
 export type Filters = {
   chatId: string;
   media: MediaFilter;
   query: string;
-};
-
-export type GithubPeriod = "daily" | "weekly" | "monthly";
-export type GithubSort = "activity" | "stars" | "star_growth" | "forks" | "recent";
-
-export type GithubRepository = {
-  id: number;
-  rank: number;
-  full_name: string;
-  owner: string;
-  name: string;
-  description: string;
-  html_url: string;
-  homepage: string;
-  language: string;
-  language_breakdown: Array<{ language: string; bytes: number; percentage: number }>;
-  topics: string[];
-  license: string;
-  features: Record<string, unknown>;
-  ai_summary_zh: string;
-  ai_significance_zh: string;
-  ai_problem_zh: string;
-  ai_generated_at: string | null;
-  stars: number;
-  forks: number;
-  open_issues: number;
-  watchers: number;
-  stars_delta: number;
-  forks_delta: number;
-  issues_delta: number;
-  activity_score: number;
-  history_complete: boolean;
-  baseline_at: string;
-  created_at: string;
-  updated_at: string;
-  pushed_at: string | null;
-  collected_at: string;
-};
-
-export type GithubRankingResponse = {
-  items: GithubRepository[];
-  total: number;
-  page: number;
-  per_page: number;
-  has_more: boolean;
-  period: GithubPeriod;
-  cutoff: string;
-  languages: Array<{ language: string; repository_count: number }>;
-  collection: {
-    status: "never" | "succeeded" | "partial" | "failed";
-    last_updated: string | null;
-    next_refresh: string | null;
-    repository_count: number;
-    refreshing: boolean;
-    history_days: number;
-  };
 };

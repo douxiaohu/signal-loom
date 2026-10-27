@@ -45,7 +45,7 @@ class SourceCollectorTests(unittest.TestCase):
         health = self.storage.get_source_health(public.chat_id, stale_after_seconds=900)
         self.assertEqual(health["health_status"], "healthy")
 
-    def test_collection_scheduler_registers_crawl_and_github_jobs(self):
+    def test_collection_scheduler_registers_only_source_crawl(self):
         config = AppConfig(
             telegram_bot_token="",
             database_url=self.storage.database_url,
@@ -63,14 +63,9 @@ class SourceCollectorTests(unittest.TestCase):
             crawler=_Crawler(CrawlResult(source="", chat_id=0, fetched=0, saved=0)),
         )
 
-        class _Github:
-            async def refresh(self):
-                return {}
-
-        scheduler = create_collection_scheduler(config, collector, _Github())
+        scheduler = create_collection_scheduler(config, collector)
         job_ids = {job.id for job in scheduler.get_jobs()}
-        self.assertIn("crawl_public_sources", job_ids)
-        self.assertIn("refresh_github_rankings", job_ids)
+        self.assertEqual({"crawl_public_sources"}, job_ids)
         self.assertNotIn("forward_telegram_to_wecom", job_ids)
 
 

@@ -205,30 +205,6 @@ async def list_visits(
     }
 
 
-@router.get("/github/status")
-async def github_status(request: Request):
-    storage: SQLiteStorage = request.app.state.storage
-    config = request.app.state.config
-    collector = getattr(request.app.state, "github_collector", None)
-    run = storage.get_latest_github_collection_run() or {}
-    return {
-        "enabled": bool(config.github_enabled),
-        "ai_enabled": bool(config.github_ai_enabled and config.github_ai_api_key and config.github_ai_model),
-        "ai_model": config.github_ai_model or "",
-        "refreshing": bool(collector and getattr(collector, "is_running", False)),
-        "collection": {
-            "status": str(run.get("status") or "never"),
-            "started_at": run.get("started_at"),
-            "finished_at": run.get("finished_at"),
-            "fetched_count": int(run.get("fetched_count") or 0),
-            "saved_count": int(run.get("saved_count") or 0),
-            "error": run.get("error"),
-            "rate_limit_remaining": run.get("rate_limit_remaining"),
-        },
-        **storage.github_ai_status(),
-    }
-
-
 @router.get("/overview")
 async def admin_overview(request: Request):
     storage: SQLiteStorage = request.app.state.storage
@@ -245,16 +221,31 @@ async def admin_overview(request: Request):
             "unhealthy": len(unhealthy),
             "items": sources,
         },
-        "github": await github_status(request),
         "alerts": {"new_count": len(matches)},
     }
 
 
+def _source_anomaly_stats(storage: SQLiteStorage, chat_id: int) -> dict[str, int]:
+    with storage._connect() as conn:
+        runs = conn.execute("SELECT saved_count, error FROM source_runs WHERE chat_id = ? ORDER BY finished_at DESC, id DESC LIMIT 30", (int(chat_id),)).fetchall()
+    failures = 0
+    for run in runs:
+        if str(run["error"] or "").strip(): failures += 1
+        else: break
+    return {"consecutive_failures": failures, "new_message_volume": int(runs[0]["saved_count"]) if runs else 0}
+
+
 @router.get("/operations/summary")
-async def operations_summary(request: Request):
+async def operations_summary(request: Request, anomaly: str = Query(default="", pattern="^(|failures|volume)$")):
     storage: SQLiteStorage = request.app.state.storage
     stale = request.app.state.config.source_stale_after_seconds
     sources = [source_to_dict(storage, source, stale_after_seconds=stale) for source in storage.list_sources()]
+    for source in sources:
+        source.update(_source_anomaly_stats(storage, source["chat_id"]))
+    if anomaly == "failures":
+        sources = [source for source in sources if source["consecutive_failures"] > 0]
+    elif anomaly == "volume":
+        sources = [source for source in sources if source["new_message_volume"] == 0]
     return {
         "sources": sources,
         "unhealthy_sources": [source for source in sources if source["health_status"] in {"unknown", "stale", "error"}],

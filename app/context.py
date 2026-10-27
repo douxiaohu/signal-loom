@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
-
 from app.config import AppConfig
 from app.domain.feed.service import FeedService
-from app.domain.insights.github.product import GitHubInsightProduct
 from app.domain.sources.service import SourceService
 from app.ingest.registry import AdapterRegistry
 from app.media_cache import MediaCache
@@ -26,4 +23,3 @@ class AppContext:
     notifications: NotificationService
     media: MediaCache
     sessions: SessionSigner
-    github_product: Optional[GitHubInsightProduct] = None

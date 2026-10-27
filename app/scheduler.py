@@ -77,7 +77,7 @@ class SourceCollector:
         return payload
 
 
-def create_collection_scheduler(config, collector: SourceCollector, github_collector=None):
+def create_collection_scheduler(config, collector: SourceCollector):
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
     from apscheduler.triggers.interval import IntervalTrigger
 
@@ -95,19 +95,6 @@ def create_collection_scheduler(config, collector: SourceCollector, github_colle
         coalesce=True,
         next_run_time=datetime.now(timezone_info),
     )
-    if github_collector is not None and config.github_enabled:
-        scheduler.add_job(
-            github_collector.refresh,
-            IntervalTrigger(
-                seconds=config.github_refresh_interval_seconds,
-                timezone=timezone_info,
-            ),
-            id="refresh_github_rankings",
-            replace_existing=True,
-            max_instances=1,
-            coalesce=True,
-            next_run_time=datetime.now(timezone_info),
-        )
     return scheduler
 
 

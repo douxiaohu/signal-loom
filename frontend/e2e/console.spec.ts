@@ -44,35 +44,13 @@ async function installApi(page: Page, startAuthenticated = true) {
     if (path === "/api/auth/logout") return route.fulfill({ status: 204 });
     if (path === "/api/public/sources") return json(route, { items: groups.map(({ source_url, ...source }) => ({ ...source, source_url })) });
     if (path === "/api/public/messages") return json(route, { items: messages, has_more: false, next_cursor: null, total: null });
-    if (path === "/api/public/github/rankings") return json(route, {
-      items: [{
-        id: 1, rank: 1, full_name: "acme/rocket", owner: "acme", name: "rocket",
-        description: "Fast API agent toolkit", html_url: "https://github.com/acme/rocket", homepage: "",
-        language: "Python", language_breakdown: [
-          { language: "Python", bytes: 8200, percentage: 82 },
-          { language: "TypeScript", bytes: 1800, percentage: 18 }
-        ], topics: ["fastapi", "agents"], license: "MIT", features: {},
-        ai_summary_zh: "用于构建 FastAPI 智能体服务的工具包。",
-        ai_significance_zh: "降低智能体后端的工程化门槛。",
-        ai_problem_zh: "解决智能体 API 编排、接入和复用成本高的问题。",
-        ai_generated_at: "2026-08-06T01:05:00Z", stars: 125, forks: 24, open_issues: 8, watchers: 125,
-        stars_delta: 25, forks_delta: 4, issues_delta: 3, activity_score: 145.5, history_complete: true,
-        baseline_at: "2026-08-05T00:00:00Z", created_at: "2025-01-01T00:00:00Z",
-        updated_at: "2026-08-06T00:00:00Z", pushed_at: "2026-08-06T00:00:00Z", collected_at: "2026-08-06T01:00:00Z"
-      }],
-      total: 1, page: 1, per_page: 24, has_more: false, period: "daily", cutoff: "2026-08-05T00:00:00Z",
-      languages: [{ language: "Python", repository_count: 1 }],
-      collection: { status: "succeeded", last_updated: "2026-08-06T01:00:00Z", next_refresh: null, repository_count: 1, refreshing: false, history_days: 1 }
-    });
     if (path === "/api/admin/sources") return json(route, { items: groups });
     if (path === "/api/admin/overview") return json(route, {
       visits: { total: 12, unique_ips: 4, today: 3, today_unique: 2, last_24h: 3, last_7d_unique: 4 },
       sources: { total: 2, enabled: 2, public: 2, unhealthy: 1, items: groups },
-      github: { enabled: true, ai_enabled: false, ai_model: "", refreshing: false, repository_count: 1, translated_count: 1, pending_count: 0, last_ai_at: "2026-08-06T01:05:00Z", pending: [], recent: [], collection: { status: "succeeded", started_at: "2026-08-06T01:00:00Z", finished_at: "2026-08-06T01:01:00Z", fetched_count: 1, saved_count: 1, error: null, rate_limit_remaining: 5000 } },
       alerts: { new_count: 1 }
     });
     if (path === "/api/admin/visits") return json(route, { items: [], stats: { total: 12, unique_ips: 4, today: 3, today_unique: 2, last_24h: 3, last_7d_unique: 4 } });
-    if (path === "/api/admin/github/status") return json(route, { enabled: true, ai_enabled: false, ai_model: "", refreshing: false, repository_count: 1, translated_count: 1, pending_count: 0, last_ai_at: null, pending: [], recent: [], collection: { status: "succeeded", started_at: null, finished_at: null, fetched_count: 0, saved_count: 0, error: null, rate_limit_remaining: null } });
     if (path === "/api/admin/messages") return json(route, { items: messages, has_more: false, next_cursor: null, total: null });
     if (path === "/api/admin/operations/summary") return json(route, { sources: groups, unhealthy_sources: [groups[1]], public_source_count: 2, source_count: 2 });
     if (path === "/api/admin/matches") return json(route, { items: [{ id: 1, rule_id: 1, rule_name: "高危漏洞", keyword: "漏洞", status: "new", matched_at: "2026-07-13T08:10:00+00:00", chat_title: "安全情报源", sender_name: "值班员", message_time: "2026-07-13T08:10:00+00:00", content: "供应链组件出现高危漏洞", media_type: "photo" }] });
@@ -120,17 +98,6 @@ test("public image is contained and opens a full-image viewer", async ({ page })
   await expect(page.getByRole("dialog", { name: "图片预览" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "图片预览" })).toHaveCount(0);
-});
-
-test("GitHub ranking explains project value, problem and language composition", async ({ page }) => {
-  await installApi(page);
-  await page.goto("/github/");
-  await expect(page.getByText("用于构建 FastAPI 智能体服务的工具包。")).toBeVisible();
-  await page.getByText("解读与特征").click();
-  await expect(page.getByText("降低智能体后端的工程化门槛。")).toBeVisible();
-  await expect(page.getByText("解决智能体 API 编排、接入和复用成本高的问题。")).toBeVisible();
-  await expect(page.getByText("Python 82% · TypeScript 18%")).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test("admin center keeps key login and contains no delivery surface", async ({ page }) => {
@@ -194,10 +161,6 @@ test("dark themes keep inverted controls readable", async ({ page }) => {
     const colors = await elementColors(page.locator(selector).first());
     expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
   }
-  await page.goto("/github/");
-  await expect(page.getByRole("heading", { name: "GitHub 趋势" })).toBeVisible();
-  const periodColors = await elementColors(page.locator(".period-switch button.active"));
-  expect(periodColors.contrast).toBeGreaterThanOrEqual(4.5);
 });
 
 test("admin message cards follow the console surface", async ({ page }) => {
@@ -214,15 +177,6 @@ test("admin message cards follow the console surface", async ({ page }) => {
   });
   expect(surfaces.cardBg).not.toBe("rgb(255, 255, 255)");
   expect(surfaces.cardBg).toBe(surfaces.columnBg);
-});
-
-test("github toolbar stays on one line on desktop", async ({ page }, testInfo) => {
-  test.skip((testInfo.project.use.viewport as { width: number }).width < 1000, "desktop layout only");
-  await installApi(page);
-  await page.goto("/github/");
-  await expect(page.getByText("用于构建 FastAPI 智能体服务的工具包。")).toBeVisible();
-  const height = await page.locator(".github-toolbar").evaluate((node) => node.getBoundingClientRect().height);
-  expect(height).toBeLessThan(60);
 });
 
 test("light theme keeps secondary text readable", async ({ page }) => {

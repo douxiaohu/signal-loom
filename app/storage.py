@@ -216,94 +216,13 @@ class SQLiteStorage:
                     UNIQUE(batch_id, attempt_no)
                 );
 
-                CREATE TABLE IF NOT EXISTS github_repositories (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    github_id INTEGER NOT NULL UNIQUE,
-                    full_name TEXT NOT NULL UNIQUE,
-                    owner TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    description TEXT NOT NULL DEFAULT '',
-                    html_url TEXT NOT NULL,
-                    homepage TEXT NOT NULL DEFAULT '',
-                    language TEXT NOT NULL DEFAULT '',
-                    topics_json TEXT NOT NULL DEFAULT '[]',
-                    license_name TEXT NOT NULL DEFAULT '',
-                    features_json TEXT NOT NULL DEFAULT '{}',
-                    stars INTEGER NOT NULL DEFAULT 0,
-                    forks INTEGER NOT NULL DEFAULT 0,
-                    open_issues INTEGER NOT NULL DEFAULT 0,
-                    watchers INTEGER NOT NULL DEFAULT 0,
-                    size INTEGER NOT NULL DEFAULT 0,
-                    default_branch TEXT NOT NULL DEFAULT '',
-                    archived INTEGER NOT NULL DEFAULT 0,
-                    disabled INTEGER NOT NULL DEFAULT 0,
-                    is_template INTEGER NOT NULL DEFAULT 0,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    pushed_at TEXT,
-                    first_seen_at TEXT NOT NULL,
-                    last_seen_at TEXT NOT NULL,
-                    search_text TEXT NOT NULL DEFAULT ''
-                );
-
-                CREATE INDEX IF NOT EXISTS idx_github_repositories_language
-                    ON github_repositories(language COLLATE NOCASE, stars DESC);
-                CREATE INDEX IF NOT EXISTS idx_github_repositories_activity
-                    ON github_repositories(archived, disabled, pushed_at DESC);
-                CREATE INDEX IF NOT EXISTS idx_github_repositories_seen
-                    ON github_repositories(last_seen_at ASC);
-
-                CREATE TABLE IF NOT EXISTS github_repository_snapshots (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    repository_id INTEGER NOT NULL REFERENCES github_repositories(id) ON DELETE CASCADE,
-                    captured_at TEXT NOT NULL,
-                    stars INTEGER NOT NULL,
-                    forks INTEGER NOT NULL,
-                    open_issues INTEGER NOT NULL,
-                    pushed_at TEXT,
-                    UNIQUE(repository_id, captured_at)
-                );
-
-                CREATE INDEX IF NOT EXISTS idx_github_snapshots_repository_time
-                    ON github_repository_snapshots(repository_id, captured_at DESC);
-
-                CREATE TABLE IF NOT EXISTS github_collection_runs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    started_at TEXT NOT NULL,
-                    finished_at TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    fetched_count INTEGER NOT NULL DEFAULT 0,
-                    saved_count INTEGER NOT NULL DEFAULT 0,
-                    error TEXT,
-                    rate_limit_remaining INTEGER,
-                    rate_limit_reset TEXT
-                );
                 """
             )
-            try:
-                conn.execute(
-                    """
-                    CREATE VIRTUAL TABLE IF NOT EXISTS github_repository_fts USING fts5(
-                        full_name, description, topics, language, license_name, features,
-                        tokenize='unicode61 remove_diacritics 2'
-                    )
-                    """
-                )
-                self._github_fts_available = True
-            except sqlite3.OperationalError:
-                self._github_fts_available = False
             _ensure_column(conn, "delivery_attempts", "chunk_count", "INTEGER NOT NULL DEFAULT 1")
             _ensure_column(conn, "delivery_attempts", "completed_chunks", "INTEGER NOT NULL DEFAULT 0")
             _ensure_column(conn, "delivery_attempts", "chunk_results", "TEXT NOT NULL DEFAULT '[]'")
             _ensure_column(conn, "messages", "content_version", "INTEGER NOT NULL DEFAULT 1")
             _ensure_column(conn, "delivery_items", "message_version", "INTEGER NOT NULL DEFAULT 1")
-            _ensure_column(conn, "github_repositories", "languages_json", "TEXT NOT NULL DEFAULT '[]'")
-            _ensure_column(conn, "github_repositories", "analysis_source_hash", "TEXT NOT NULL DEFAULT ''")
-            _ensure_column(conn, "github_repositories", "ai_summary_zh", "TEXT NOT NULL DEFAULT ''")
-            _ensure_column(conn, "github_repositories", "ai_significance_zh", "TEXT NOT NULL DEFAULT ''")
-            _ensure_column(conn, "github_repositories", "ai_problem_zh", "TEXT NOT NULL DEFAULT ''")
-            _ensure_column(conn, "github_repositories", "ai_model", "TEXT NOT NULL DEFAULT ''")
-            _ensure_column(conn, "github_repositories", "ai_generated_at", "TEXT")
             _ensure_column(conn, "sources", "adapter", "TEXT NOT NULL DEFAULT ''")
             _ensure_column(conn, "sources", "locator", "TEXT NOT NULL DEFAULT ''")
             _ensure_column(conn, "sources", "config_json", "TEXT NOT NULL DEFAULT '{}'")
@@ -323,6 +242,16 @@ class SQLiteStorage:
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_site_visits_visited_at ON site_visits(visited_at DESC)"
             )
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS feedback (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    message TEXT NOT NULL,
+                    ip TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'new',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_site_visits_ip ON site_visits(ip)")
             conn.execute(
                 "UPDATE sources SET adapter = source_type WHERE adapter = '' OR adapter IS NULL"
@@ -1648,6 +1577,29 @@ class SQLiteStorage:
                 "SELECT * FROM github_collection_runs ORDER BY id DESC LIMIT 1"
             ).fetchone()
         return dict(row) if row is not None else None
+
+    def create_feedback(self, *, message: str, ip: str) -> Dict[str, object]:
+        clean = str(message).strip()
+        now = utc_now_iso()
+        with self._connect() as conn:
+            cursor = conn.execute("INSERT INTO feedback(message, ip, created_at, updated_at) VALUES (?, ?, ?, ?)", (clean, str(ip)[:64], now, now))
+            row = conn.execute("SELECT * FROM feedback WHERE id = ?", (cursor.lastrowid,)).fetchone()
+        return dict(row)
+
+    def list_feedback(self) -> List[Dict[str, object]]:
+        with self._connect() as conn:
+            rows = conn.execute("SELECT * FROM feedback ORDER BY id DESC").fetchall()
+        return [dict(row) for row in rows]
+
+    def update_feedback_status(self, feedback_id: int, status: str) -> Dict[str, object]:
+        if status not in {"new", "reviewed", "resolved", "dismissed"}:
+            raise ValueError("invalid feedback status")
+        with self._connect() as conn:
+            cursor = conn.execute("UPDATE feedback SET status = ?, updated_at = ? WHERE id = ?", (status, utc_now_iso(), int(feedback_id)))
+            if cursor.rowcount != 1:
+                raise KeyError(feedback_id)
+            row = conn.execute("SELECT * FROM feedback WHERE id = ?", (int(feedback_id),)).fetchone()
+        return dict(row)
 
     def record_site_visit(
         self,

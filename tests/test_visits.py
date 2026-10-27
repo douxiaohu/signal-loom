@@ -31,7 +31,6 @@ class VisitTrackingTests(unittest.TestCase):
         app.state.storage = self.storage
         app.state.session_signer = SessionSigner(self.config.session_secret, ttl_seconds=3600)
         app.state.login_limiter = LoginAttemptLimiter()
-        app.state.github_collector = None
         self.client = TestClient(app, base_url="http://testserver")
 
     def tearDown(self):
@@ -53,14 +52,14 @@ class VisitTrackingTests(unittest.TestCase):
         self.assertNotIn("/health", paths)
         self.assertNotIn("/api/admin/visits", paths)
 
-    def test_overview_requires_session_and_includes_source_and_github_blocks(self):
+    def test_overview_requires_session_and_excludes_retired_github(self):
         self.assertEqual(self.client.get("/api/admin/overview").status_code, 401)
         self.assertEqual(self.client.post("/api/auth/login", json={"api_key": "correct-key"}).status_code, 200)
         payload = self.client.get("/api/admin/overview").json()
         self.assertIn("visits", payload)
         self.assertIn("sources", payload)
-        self.assertIn("github", payload)
+        self.assertNotIn("github", payload)
         self.assertIn("alerts", payload)
-        self.assertIn("translated_count", payload["github"])
-        status = self.client.get("/api/admin/github/status").json()
-        self.assertIn(status["collection"]["status"], {"never", "succeeded", "partial", "failed"})
+        self.assertEqual(self.client.get("/api/admin/github/status").status_code, 404)
+        self.assertEqual(self.client.get("/api/public/github/rankings").status_code, 404)
+        self.assertEqual(self.client.get("/github/").status_code, 404)

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
 import {
   acknowledgeAlert,
   ApiError,
@@ -9,7 +11,6 @@ import {
   createSource,
   fetchAlertRules,
   fetchAlerts,
-  fetchGithubStatus,
   fetchGroups,
   fetchMessages,
   fetchOperations,
@@ -20,10 +21,8 @@ import {
   logout,
   patchAlertRule,
   patchSource,
-  refreshGithub,
   resolveAlert,
 } from "./api";
-import AdminGithub from "./components/AdminGithub";
 import AdminOverview from "./components/AdminOverview";
 import AdminShell from "./components/AdminShell";
 import AdminVisits from "./components/AdminVisits";
@@ -31,7 +30,7 @@ import FilterPanel from "./components/FilterPanel";
 import LoginScreen from "./components/LoginScreen";
 import MessageFeed from "./components/MessageFeed";
 import OperationsRail from "./components/OperationsRail";
-import type { AdminOverview as Overview, AdminView, AlertMatch, AlertRule, Filters, GithubAdminStatus, Group, Message, OperationSummary, VisitRecord, VisitStats } from "./types";
+import type { AdminOverview as Overview, AdminView, AlertMatch, AlertRule, Filters, Group, Message, OperationSummary, VisitRecord, VisitStats } from "./types";
 import { errorHelp, errorMessage, fullDateFormatter, isMediaFilter, mediaLabel } from "./utils";
 
 const PAGE_LIMIT = 30;
@@ -67,8 +66,6 @@ export default function App() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [visits, setVisits] = useState<VisitRecord[]>([]);
   const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
-  const [githubStatus, setGithubStatus] = useState<GithubAdminStatus | null>(null);
-  const [githubBusy, setGithubBusy] = useState(false);
 
   const requestSequence = useRef(0);
   const messageController = useRef<AbortController | null>(null);
@@ -175,9 +172,6 @@ export default function App() {
         setVisits(payload.items);
         setVisitStats(payload.stats);
       }).catch((caught) => handleUnauthorized(caught));
-    }
-    if (view === "github") {
-      fetchGithubStatus().then(setGithubStatus).catch((caught) => handleUnauthorized(caught));
     }
   }, [authenticated, handleUnauthorized, view]);
 
@@ -364,27 +358,13 @@ export default function App() {
           {view === "sources" ? rail : null}
           {view === "alerts" ? rail : null}
           {view === "visits" ? <AdminVisits items={visits} stats={visitStats} /> : null}
-          {view === "github" ? (
-            <AdminGithub
-              data={githubStatus}
-              busy={githubBusy}
-              onRefresh={() => {
-                setGithubBusy(true);
-                refreshGithub()
-                  .then(() => fetchGithubStatus())
-                  .then(setGithubStatus)
-                  .catch((caught) => handleUnauthorized(caught))
-                  .finally(() => setGithubBusy(false));
-              }}
-            />
-          ) : null}
           {view === "messages" ? (
             <div className="admin-messages">
               <FilterPanel draft={draft} groups={groups} open={filtersOpen} onChange={setDraft} onClose={closeFilters} onSubmit={commitFilters} />
               <section className="timeline-column" aria-label="消息工作区">
                 <header className="timeline-toolbar">
                   <div><p className="section-kicker">消息检索</p><h2>{activeSource}</h2><p>{mediaLabel(filters.media)}{filters.query ? ` · “${filters.query}”` : ""}</p></div>
-                  <button className="secondary-button" type="button" onClick={openFilters}><SlidersHorizontal size={16} aria-hidden="true" />筛选</button>
+                  <Button variant="outline" size="sm" className="filters-toggle" type="button" onClick={openFilters}><SlidersHorizontal size={16} aria-hidden="true" />筛选</Button>
                 </header>
                 {messageError ? <InlineError title="消息加载失败" message={messageError} onRetry={() => setMessageRefreshKey((value) => value + 1)} /> : null}
                 {pendingNew.length ? (
@@ -409,7 +389,7 @@ function InlineError({ title, message, onRetry }: { title: string; message: stri
 
 function readViewFromUrl(): AdminView {
   const view = new URLSearchParams(window.location.search).get("view");
-  if (view === "sources" || view === "github" || view === "visits" || view === "alerts" || view === "messages") return view;
+  if (view === "sources" || view === "visits" || view === "alerts" || view === "messages") return view;
   return "overview";
 }
 

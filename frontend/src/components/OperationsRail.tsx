@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Check, Eye, EyeOff, Pause, Play, Radar, ShieldAlert } from "lucide-react";
 
+import SpotlightCard from "../bits/SpotlightCard";
 import type { AlertMatch, AlertRule, Group } from "../types";
 import { formatCount, formatDate } from "../utils";
 
@@ -20,13 +21,16 @@ type OperationsRailProps = {
 
 export default function OperationsRail(props: OperationsRailProps) {
   const focus = props.focus || "all";
-  const unhealthy = props.groups.filter((group) => group.health_status !== "healthy");
+  const [anomaly, setAnomaly] = useState<"all" | "failures" | "volume">("all");
+  const visibleGroups = props.groups.filter((group) => { const health = group as Group & { consecutive_failures?: number; new_message_volume?: number }; return anomaly === "all" || (anomaly === "failures" ? (health.consecutive_failures || 0) > 0 : (health.new_message_volume || 0) === 0); });
+  const unhealthy = visibleGroups.filter((group) => group.health_status !== "healthy");
   const newAlerts = props.alerts.filter((alert) => alert.status === "new");
   return (
     <aside className="operations-rail admin-stack" aria-label="来源健康与监测规则">
-      {focus !== "alerts" ? <section id="source-operations" className="ops-card" tabIndex={-1} aria-labelledby="source-operations-title">
+      {focus !== "alerts" ? <SpotlightCard as="section" id="source-operations" className="ops-card" tabIndex={-1} aria-labelledby="source-operations-title">
         <header><div><p className="section-kicker">运行</p><h2 id="source-operations-title">来源管理</h2></div><strong className={unhealthy.length ? "count-warn" : "count-ok"}>{unhealthy.length ? formatCount(unhealthy.length) : "正常"}</strong></header>
-        {props.groups.length ? (
+        <label>异常筛选 <select aria-label="来源异常筛选" value={anomaly} onChange={(event) => setAnomaly(event.target.value as typeof anomaly)}><option value="all">全部来源</option><option value="failures">连续失败</option><option value="volume">无新增消息</option></select></label>
+        {visibleGroups.length ? (
           <table className="source-table">
             <thead>
               <tr>
@@ -36,11 +40,11 @@ export default function OperationsRail(props: OperationsRailProps) {
               </tr>
             </thead>
             <tbody>
-              {props.groups.map((group) => (
+              {visibleGroups.map((group) => (
                 <tr key={group.chat_id}>
                   <td>
                     <strong>{group.name}</strong>
-                    <small>{healthCopy(group)}</small>
+                    <small>{healthCopy(group)} · 连续失败 {(group as Group & { consecutive_failures?: number }).consecutive_failures || 0} · 新增 {(group as Group & { new_message_volume?: number }).new_message_volume || 0}</small>
                   </td>
                   <td>
                     <small>{group.enabled === false ? "已停用" : "采集中"} · {group.public_visible ? "公开" : "私有"}</small>
@@ -62,8 +66,8 @@ export default function OperationsRail(props: OperationsRailProps) {
           </table>
         ) : <p className="empty-copy">暂无来源配置</p>}
         <SourceComposer onCreate={props.onCreateSource} />
-      </section> : null}
-      {focus !== "sources" ? <section id="alert-operations" className="ops-card" tabIndex={-1} aria-labelledby="alert-operations-title">
+      </SpotlightCard> : null}
+      {focus !== "sources" ? <SpotlightCard as="section" id="alert-operations" className="ops-card" tabIndex={-1} aria-labelledby="alert-operations-title">
         <header><div><p className="section-kicker">监测</p><h2 id="alert-operations-title">规则命中</h2></div><strong className={newAlerts.length ? "count-warn" : "count-ok"}>{formatCount(newAlerts.length)}</strong></header>
         <div className="compact-list">
           {(focus === "alerts" ? props.alerts : props.alerts.slice(0, 8)).map((alert) => (
@@ -80,7 +84,7 @@ export default function OperationsRail(props: OperationsRailProps) {
           {!props.alerts.length ? <p className="empty-copy">暂无规则命中</p> : null}
         </div>
         <RuleComposer rules={props.rules} onCreate={props.onCreateRule} onToggle={props.onToggleRule} />
-      </section> : null}
+      </SpotlightCard> : null}
     </aside>
   );
 }

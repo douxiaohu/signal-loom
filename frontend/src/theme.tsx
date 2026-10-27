@@ -3,19 +3,33 @@ import type { ChangeEvent } from "react";
 export type ThemeId = "midnight" | "aurora" | "ember" | "paper";
 
 const options: Array<[ThemeId, string]> = [["paper", "白色"], ["midnight", "午夜蓝"], ["aurora", "极光绿"], ["ember", "余烬橙"]];
+const themeColor: Record<ThemeId, string> = {
+  paper: "#f7f6f4",
+  midnight: "#13141a",
+  aurora: "#101915",
+  ember: "#1b1612"
+};
 const storageKey = "tm-theme";
 
 function readTheme(): ThemeId {
-  return (window.localStorage.getItem(storageKey) || "paper") as ThemeId;
+  const stored = window.localStorage.getItem(storageKey);
+  if (stored === "midnight" || stored === "aurora" || stored === "ember" || stored === "paper") return stored;
+  return "paper";
+}
+
+function applyTheme(theme: ThemeId) {
+  document.documentElement.dataset.theme = theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", themeColor[theme]);
 }
 
 function selectTheme(event: ChangeEvent<HTMLSelectElement>) {
   const value = event.target.value;
-  document.documentElement.dataset.theme = value;
-  window.localStorage.setItem(storageKey, value);
+  const theme = value === "midnight" || value === "aurora" || value === "ember" || value === "paper" ? value : "paper";
+  applyTheme(theme);
+  window.localStorage.setItem(storageKey, theme);
 }
 
-document.documentElement.dataset.theme = readTheme();
+applyTheme(readTheme());
 
 export function ThemeSwitcher() {
   const theme = readTheme();

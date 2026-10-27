@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useRef } from "react";
 import { Search, X } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { Filters, Group, MediaFilter } from "../types";
 import { formatCount, mediaOptions } from "../utils";
 
@@ -77,9 +79,9 @@ export default function FilterPanel({ draft, groups, open, onChange, onClose, on
         <label className="field-label" htmlFor="query-filter">关键词</label>
         <div className="search-input">
           <Search size={17} aria-hidden="true" />
-          <input id="query-filter" name="query" type="search" value={draft.query} onChange={(event) => onChange({ ...draft, query: event.target.value })} placeholder="例如：高危漏洞…" autoComplete="off" />
+          <Input id="query-filter" name="query" type="search" value={draft.query} onChange={(event) => onChange({ ...draft, query: event.target.value })} placeholder="例如：高危漏洞…" autoComplete="off" />
         </div>
-        <button className="primary-button filter-submit" type="submit">应用筛选</button>
+        <Button className="mt-1 w-full" type="submit">应用筛选</Button>
       </form>
     </aside>
   );

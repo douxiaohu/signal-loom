@@ -1,4 +1,4 @@
-import type { AdminOverview, AlertMatch, AlertRule, Filters, GithubAdminStatus, Group, MessagePage, OperationSummary, Session, VisitRecord, VisitStats } from "./types";
+import type { AdminOverview, AlertMatch, AlertRule, Filters, Group, MessagePage, OperationSummary, Session, VisitRecord, VisitStats } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -79,5 +79,3 @@ export const patchSource = (chatId: number, payload: { name?: string; enabled?: 
 export const crawlSource = (chatId: number) => apiFetch<unknown>(`/api/admin/sources/${chatId}/crawl-now`, { method: "POST" });
 export const fetchOverview = (signal?: AbortSignal) => apiFetch<AdminOverview>("/api/admin/overview", { signal });
 export const fetchVisits = (signal?: AbortSignal) => apiFetch<{ items: VisitRecord[]; stats: VisitStats }>("/api/admin/visits", { signal });
-export const fetchGithubStatus = (signal?: AbortSignal) => apiFetch<GithubAdminStatus>("/api/admin/github/status", { signal });
-export const refreshGithub = () => apiFetch<unknown>("/api/admin/github/refresh", { method: "POST" });

@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 
+import ClickSpark from "./bits/ClickSpark";
 import App from "./App";
 import "./styles.css";
 
@@ -10,6 +11,8 @@ if (!root) throw new Error("Missing #app");
 
 createRoot(root).render(
   <React.StrictMode>
-    <App />
+    <ClickSpark>
+      <App />
+    </ClickSpark>
   </React.StrictMode>
 );

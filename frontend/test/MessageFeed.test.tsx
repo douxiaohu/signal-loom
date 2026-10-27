@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import MessageFeed from "../src/components/MessageFeed";
 import type { Message } from "../src/types";
@@ -56,6 +56,42 @@ describe("MessageFeed", () => {
     );
 
     expect(screen.getByRole("button", { name: "正在加载更多…" })).toBeDisabled();
+  });
+
+  it("groups near-identical public news while keeping each original link available", () => {
+    render(
+      <MessageFeed
+        hasMore={false}
+        initialLoading={false}
+        loadingMore={false}
+        messages={[
+          message({ id: 1, chat_title: "首发来源", content: "突发：台风将于今晚登陆，相关部门提醒市民做好防范。", source_url: "https://t.me/one/1" }),
+          message({ id: 2, chat_title: "另一来源", content: "突发：台风将于今晚登陆，相关部门提醒市民做好防范。", source_url: "https://t.me/two/2" })
+        ]}
+        onLoadMore={() => undefined}
+        groupDuplicates
+      />
+    );
+
+    expect(screen.getAllByText("突发：台风将于今晚登陆，相关部门提醒市民做好防范。")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "显示 1 条相似消息" })).toBeInTheDocument();
+    expect(screen.queryByText("另一来源")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "显示 1 条相似消息" }));
+    return waitFor(() => {
+      expect(screen.getByText("另一来源")).toBeInTheDocument();
+      expect(screen.getAllByRole("link", { name: "原文" })[1]).toHaveAttribute("href", "https://t.me/two/2");
+    });
+  });
+
+  it("does not group short or unrelated messages", () => {
+    render(
+      <MessageFeed hasMore={false} initialLoading={false} loadingMore={false} onLoadMore={() => undefined}
+ groupDuplicates
+ messages={[message({ id: 1, content: "天气", source_url: "https://t.me/one/1" }), message({ id: 2, content: "市场发布重要公告", source_url: "https://t.me/two/2" })]} />
+    );
+    expect(screen.queryByRole("button", { name: /相似消息/ })).not.toBeInTheDocument();
+    expect(screen.getByText("市场发布重要公告")).toBeInTheDocument();
   });
 
   it("shows every photo in a compact grid without collapsing extras", () => {

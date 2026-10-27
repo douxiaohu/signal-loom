@@ -80,7 +80,14 @@ if [[ -f data/telegram_forwarder.db ]]; then
     cp -a data/telegram_forwarder.db "$BACKUP_DIR/telegram_forwarder.db"
   fi
 fi
-[[ -d data ]] && tar -czf "$BACKUP_DIR/data.tgz" data
+if [[ -d data ]]; then
+  tar -czf "$BACKUP_DIR/data.tgz" data || {
+    status=$?
+    if [[ "$status" -ne 1 ]]; then
+      exit "$status"
+    fi
+  }
+fi
 [[ -f .env ]] && cp -a .env "$BACKUP_DIR/env"
 [[ -f config/groups.yaml ]] && cp -a config/groups.yaml "$BACKUP_DIR/groups.yaml"
 if docker image inspect telegram-forwarder >/dev/null 2>&1; then
@@ -147,7 +154,7 @@ sleep 2
 curl -fsS http://127.0.0.1:8000/health
 echo
 curl -fsS -o /dev/null -w 'GET / %{http_code}\n' http://127.0.0.1:8000/
-curl -fsS -o /dev/null -w 'GET /github %{http_code}\n' http://127.0.0.1:8000/github
+test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/github)" = 404
 curl -fsS -o /dev/null -w 'GET /admin %{http_code}\n' http://127.0.0.1:8000/admin
 curl -fsS -o /dev/null -w 'GET /api/admin/sources %{http_code}\n' http://127.0.0.1:8000/api/admin/sources
 ss -lnt | grep 8000 || netstat -lnt | grep 8000 || true

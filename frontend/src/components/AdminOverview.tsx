@@ -1,5 +1,8 @@
-import { Activity, GitBranch, RadioTower, ShieldAlert, Users } from "lucide-react";
+import { Activity, RadioTower, ShieldAlert, Users } from "lucide-react";
 
+import CountUp, { CountUpPair } from "../bits/CountUp";
+import ShinyText from "../bits/ShinyText";
+import SpotlightCard from "../bits/SpotlightCard";
 import type { AdminOverview, AdminView, Group } from "../types";
 import { formatCount, formatDate } from "../utils";
 
@@ -14,54 +17,73 @@ export default function AdminOverview({
     return (
       <div className="admin-stack">
         <header className="admin-page-head">
-          <h1>管理中心</h1>
-          <p>正在加载概览…</p>
+          <div>
+            <h1><ShinyText text="管理中心" /></h1>
+            <p>正在加载概览…</p>
+          </div>
         </header>
       </div>
     );
   }
   const visits = data.visits;
   const sources = data.sources;
-  const github = data.github;
   return (
     <div className="admin-stack">
       <header className="admin-page-head">
-        <h1>管理中心</h1>
-        <p>采集、翻译和访问数据的工作台，与前台阅读页分离。</p>
+        <div>
+          <h1><ShinyText text="管理中心" /></h1>
+          <p>采集、规则和访问数据的工作台，与前台阅读页分离。</p>
+        </div>
       </header>
       <section className="stat-grid" aria-label="关键指标">
-        <button type="button" className="stat-card" onClick={() => onOpen("visits")}>
+        <SpotlightCard as="button" type="button" className="stat-card" onClick={() => onOpen("visits")}>
           <span className="stat-icon"><Users size={16} aria-hidden="true" /></span>
-          <span>今日独立 IP</span><strong>{formatCount(visits.today_unique)}</strong>
+          <span>今日独立 IP</span><strong><CountUp to={visits.today_unique} /></strong>
           <small>累计 {formatCount(visits.unique_ips)} 个用户</small>
-        </button>
-        <button type="button" className="stat-card" onClick={() => onOpen("visits")}>
+        </SpotlightCard>
+        <SpotlightCard as="button" type="button" className="stat-card" onClick={() => onOpen("visits")}>
           <span className="stat-icon"><Activity size={16} aria-hidden="true" /></span>
-          <span>今日访问</span><strong>{formatCount(visits.today)}</strong>
+          <span>今日访问</span><strong><CountUp to={visits.today} /></strong>
           <small>近 24 小时 {formatCount(visits.last_24h)}</small>
-        </button>
-        <button type="button" className="stat-card" onClick={() => onOpen("sources")}>
+        </SpotlightCard>
+        <SpotlightCard as="button" type="button" className="stat-card" onClick={() => onOpen("sources")}>
           <span className="stat-icon"><RadioTower size={16} aria-hidden="true" /></span>
-          <span>采集来源</span><strong>{formatCount(sources.enabled)} / {formatCount(sources.total)}</strong>
+          <span>采集来源</span><strong><CountUpPair left={sources.enabled} right={sources.total} /></strong>
           <small>公开 {formatCount(sources.public)} · 异常 {formatCount(sources.unhealthy)}</small>
-        </button>
-        <button type="button" className="stat-card" onClick={() => onOpen("github")}>
-          <span className="stat-icon"><GitBranch size={16} aria-hidden="true" /></span>
-          <span>GitHub 中文解读</span><strong>{formatCount(github.translated_count)} / {formatCount(github.repository_count)}</strong>
-          <small>{github.ai_enabled ? (github.ai_model || "已启用") : "未启用 AI"} · 采集 {github.collection.status}</small>
-        </button>
-        <button type="button" className="stat-card" onClick={() => onOpen("alerts")}>
+        </SpotlightCard>
+        <SpotlightCard as="button" type="button" className="stat-card" onClick={() => onOpen("alerts")}>
           <span className="stat-icon"><ShieldAlert size={16} aria-hidden="true" /></span>
-          <span>新规则命中</span><strong>{formatCount(data.alerts.new_count)}</strong>
+          <span>新规则命中</span><strong><CountUp to={data.alerts.new_count} /></strong>
           <small>进入规则模块处理</small>
-        </button>
+        </SpotlightCard>
       </section>
-      <section className="ops-card">
+      <AlertLifecycleOverview alerts={data.alerts} onOpen={onOpen} />
+      <SpotlightCard as="section" className="ops-card">
         <header><h2>渠道采集状态</h2></header>
         <SourceStatusTable groups={sources.items} />
-      </section>
+      </SpotlightCard>
     </div>
   );
+}
+
+export function AlertLifecycleOverview({ alerts, onOpen }: { alerts: AdminOverview["alerts"]; onOpen: (view: AdminView) => void }) {
+  const trend = alerts.trend ?? [];
+  return (
+    <SpotlightCard as="section" className="ops-card" aria-label="规则生命周期">
+      <header><h2>规则生命周期</h2></header>
+      <div className="stat-grid">
+        <SpotlightCard as="button" type="button" className="stat-card" onClick={() => onOpen("alerts")}><span>启用规则</span><strong><CountUpPair left={alerts.enabled_rule_count ?? 0} right={alerts.rule_count ?? 0} /></strong><small>当前规则状态</small></SpotlightCard>
+        <SpotlightCard as="button" type="button" className="stat-card" onClick={() => onOpen("alerts")}><span>待处理命中</span><strong><CountUp to={alerts.pending_count ?? alerts.new_count} /></strong><small>新建 {formatCount(alerts.new_count)}</small></SpotlightCard>
+        <SpotlightCard as="button" type="button" className="stat-card" onClick={() => onOpen("alerts")}><span>平均待处理时长</span><strong>{formatAge(alerts.pending_age_minutes ?? 0)}</strong><small>确认 {formatCount(alerts.acknowledged_count ?? 0)} · 解决 {formatCount(alerts.resolved_count ?? 0)}</small></SpotlightCard>
+      </div>
+      <div aria-label="规则命中趋势" role="img" className="alert-trend">{trend.map((point) => <span key={point.date}><strong><CountUp to={point.count} duration={0.6} /></strong><small>{point.date}</small></span>)}</div>
+    </SpotlightCard>
+  );
+}
+
+function formatAge(minutes: number) {
+  if (minutes < 60) return `${minutes}分钟`;
+  return `${Math.floor(minutes / 60)}小时${minutes % 60 ? `${minutes % 60}分钟` : ""}`;
 }
 
 export function SourceStatusTable({ groups }: { groups: Group[] }) {
