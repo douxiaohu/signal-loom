@@ -1,39 +1,48 @@
+# Stage 1: 构建 React 19 前端
 FROM node:22-alpine AS frontend-builder
-
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend ./
 RUN npm run build
 
-FROM python:3.11-slim
+# Stage 2: 编译 Go 二进制服务
+FROM golang:1.24-alpine AS go-builder
+WORKDIR /build
 
-ARG APP_UID=10001
-ARG APP_GID=10001
+# 缓存依赖层
+COPY go.mod go.sum ./
+RUN go mod download
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# 复制 Go 源码并编译
+COPY cmd ./cmd
+COPY internal ./internal
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o telegram-radar ./cmd/server
+
+# Stage 3: 最小化轻量运行时 (Alpine 极简镜像，约 30MB)
+FROM alpine:3.20
+
+ARG APP_UID=1000
+ARG APP_GID=1000
+
+RUN apk add --no-cache ca-certificates tzdata \
+    && addgroup -g ${APP_GID} app \
+    && adduser -D -u ${APP_UID} -G app app
 
 WORKDIR /app
 
-# Single worker is required: in-process scheduler + one SQLite writer.
+# 复制 Go 二进制文件与前端静态构建产物
+COPY --from=go-builder /build/telegram-radar /app/telegram-radar
+COPY --from=frontend-builder /frontend/dist /app/frontend/dist
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY app ./app
-COPY --from=frontend-builder /frontend/dist ./frontend/dist
-COPY config/groups.example.yaml ./config/groups.example.yaml
-
-RUN mkdir -p /app/data /app/data/screenshots /app/data/media-cache
-
-RUN groupadd --gid "${APP_GID}" app \
-    && useradd --uid "${APP_UID}" --gid app --home-dir /app --shell /usr/sbin/nologin app \
+RUN mkdir -p /app/data /app/data/media-cache \
     && chown -R app:app /app
 
 USER app
 
 EXPOSE 8000
 
-# Compose publishes 127.0.0.1:8000; do not raise --workers above 1.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+ENV PORT=8000 \
+    APP_ENV=production
+
+CMD ["/app/telegram-radar"]
