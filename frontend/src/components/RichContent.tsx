@@ -51,7 +51,7 @@ export default function RichContent({ content, maxCollapsedLength = 360 }: RichC
                   href={part}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-0.5 text-blue-500 hover:text-blue-400 underline decoration-blue-500/40 hover:decoration-blue-400 break-all transition-colors duration-150 mx-0.5"
+                  className="inline-flex items-center gap-0.5 text-blue-600 dark:text-blue-400 hover:underline break-all transition-colors duration-150 mx-0.5 font-medium"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span>{displayUrl}</span>
@@ -71,7 +71,7 @@ export default function RichContent({ content, maxCollapsedLength = 360 }: RichC
                     href={`https://t.me/${username}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-cyan-500 hover:text-cyan-400 font-medium hover:underline transition-colors duration-150"
+                    className="text-cyan-600 dark:text-cyan-400 font-medium hover:underline transition-colors duration-150"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {sub}
@@ -87,7 +87,7 @@ export default function RichContent({ content, maxCollapsedLength = 360 }: RichC
   }, [displayText]);
 
   return (
-    <div className="relative group/content text-[14.5px] leading-relaxed text-zinc-200">
+    <div className="relative group/content text-[14.5px] leading-relaxed text-[var(--foreground)]">
       <div className={`overflow-hidden transition-all duration-300 ${!expanded && isLong ? "relative" : ""}`}>
         {parsedNodes}
 
@@ -96,12 +96,12 @@ export default function RichContent({ content, maxCollapsedLength = 360 }: RichC
         )}
       </div>
 
-      <div className="flex items-center justify-between mt-2 pt-1">
+      <div className="flex items-center justify-between mt-2 pt-1 border-t border-[var(--border)]/40">
         {isLong ? (
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white transition-colors py-0.5 px-2 rounded-md hover:bg-white/5 cursor-pointer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors py-0.5 px-2 rounded-md hover:bg-[var(--surface-muted)] cursor-pointer"
           >
             {expanded ? (
               <>
@@ -122,12 +122,12 @@ export default function RichContent({ content, maxCollapsedLength = 360 }: RichC
           onClick={handleCopy}
           aria-label="复制正文"
           title="复制正文内容"
-          className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 opacity-0 group-hover/content:opacity-100 transition-all duration-200 py-1 px-2 rounded-md hover:bg-white/5 cursor-pointer"
+          className="inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] opacity-60 group-hover/content:opacity-100 transition-all duration-200 py-1 px-2 rounded-md hover:bg-[var(--surface-muted)] cursor-pointer"
         >
           {copied ? (
             <>
-              <Check size={13} className="text-emerald-400" />
-              <span className="text-emerald-400">已复制</span>
+              <Check size={13} className="text-emerald-500" />
+              <span className="text-emerald-500 font-medium">已复制</span>
             </>
           ) : (
             <>

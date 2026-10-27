@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Filter, RefreshCw, Search, SlidersHorizontal, Sparkles } from "lucide-react";
+import { RefreshCw, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 
 import { fetchPublicMessages, fetchPublicSources } from "./public-api";
 import MessageFeed from "./components/MessageFeed";
@@ -180,26 +180,30 @@ export default function PublicApp() {
       : sources.find((source) => String(source.chat_id) === filters.chatId)?.name || "当前来源";
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] selection:bg-white/20">
-      {/* 极简磨砂吸顶导航栏 (Linear/Vercel 风格) */}
-      <header className="sticky top-0 z-30 w-full border-b border-white/[0.08] bg-zinc-950/70 backdrop-blur-xl transition-all">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] selection:bg-[var(--surface-muted)] transition-colors duration-200">
+      {/* 极简磨砂吸顶导航栏 */}
+      <header className="sticky top-0 z-30 w-full border-b border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-xl transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           {/* Logo 与产品标识 */}
           <div className="flex items-center gap-3">
             <a href="/" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 p-[1px] shadow-sm">
-                <div className="w-full h-full bg-zinc-950 rounded-[7px] flex items-center justify-center">
-                  <Sparkles size={16} className="text-cyan-400 group-hover:rotate-12 transition-transform duration-300" />
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 p-[1px] shadow-xs">
+                <div className="w-full h-full bg-[var(--card)] rounded-[7px] flex items-center justify-center">
+                  <Sparkles size={16} className="text-cyan-500 group-hover:rotate-12 transition-transform duration-300" />
                 </div>
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <h1 className="text-sm font-semibold tracking-tight text-white m-0 p-0">
+                  <h1 className="text-sm font-semibold tracking-tight text-[var(--foreground)] m-0 p-0">
                     频道资讯
                   </h1>
-                  <span className="text-[10px] font-normal px-1.5 py-0.2 rounded bg-white/10 text-zinc-400">公开阅读</span>
+                  <span className="text-[10px] font-normal px-1.5 py-0.2 rounded bg-[var(--surface-muted)] text-[var(--muted-foreground)]">
+                    公开阅读
+                  </span>
                 </div>
-                <span className="text-[10px] text-zinc-500 font-mono">免密聚合浏览平台</span>
+                <span className="text-[10px] text-[var(--muted-foreground)] font-mono">
+                  免密聚合浏览平台
+                </span>
               </div>
             </a>
           </div>
@@ -207,13 +211,13 @@ export default function PublicApp() {
           {/* 实时搜索框 */}
           <div className="flex-1 max-w-md hidden sm:block">
             <form onSubmit={submitSearch} className="relative">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
               <input
                 type="search"
                 value={draftQuery}
                 onChange={(e) => setDraftQuery(e.target.value)}
                 placeholder="检索资讯关键词，回车确认…"
-                className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-900/60 border border-white/10 hover:border-white/20 focus:border-cyan-500/50 rounded-full text-zinc-200 placeholder-zinc-500 outline-none transition-all duration-200 shadow-inner"
+                className="w-full pl-9 pr-4 py-2 text-xs bg-[var(--surface-muted)] border border-[var(--border)] hover:border-[var(--ring)] focus:border-[var(--ring)] rounded-full text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none transition-all duration-200"
               />
             </form>
           </div>
@@ -224,14 +228,14 @@ export default function PublicApp() {
               type="button"
               onClick={handleManualRefresh}
               title="手动刷新资讯"
-              className="p-2 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg transition-colors cursor-pointer"
+              className="p-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] bg-[var(--surface-muted)] hover:bg-[var(--accent)] border border-[var(--border)] rounded-lg transition-colors cursor-pointer"
             >
-              <RefreshCw size={15} className={isRefreshing ? "animate-spin text-cyan-400" : ""} />
+              <RefreshCw size={15} className={isRefreshing ? "animate-spin text-cyan-500" : ""} />
             </button>
             <ThemeSwitcher />
             <a
               href="/admin"
-              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/5 transition-colors"
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[var(--surface-muted)] hover:bg-[var(--accent)] text-[var(--foreground)] border border-[var(--border)] transition-colors"
             >
               管理中心
             </a>
@@ -241,13 +245,13 @@ export default function PublicApp() {
         {/* 移动端搜索框 */}
         <div className="sm:hidden px-4 pb-3">
           <form onSubmit={submitSearch} className="relative">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
             <input
               type="search"
               value={draftQuery}
               onChange={(e) => setDraftQuery(e.target.value)}
               placeholder="搜索资讯…"
-              className="w-full pl-9 pr-4 py-1.5 text-xs bg-zinc-900/60 border border-white/10 rounded-full text-zinc-200 outline-none"
+              className="w-full pl-9 pr-4 py-1.5 text-xs bg-[var(--surface-muted)] border border-[var(--border)] rounded-full text-[var(--foreground)] outline-none"
             />
           </form>
         </div>
@@ -266,9 +270,9 @@ export default function PublicApp() {
           {/* 右侧消息时间线内容区 */}
           <div className="flex-1 w-full min-w-0 space-y-4">
             {/* 顶部过滤药丸导航 (Pills Filter) */}
-            <div className="flex items-center justify-between gap-3 pb-2 border-b border-white/5">
+            <div className="flex items-center justify-between gap-3 pb-2 border-b border-[var(--border)]">
               <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
-                <span className="text-xs text-zinc-500 flex items-center gap-1 mr-1">
+                <span className="text-xs text-[var(--muted-foreground)] flex items-center gap-1 mr-1">
                   <SlidersHorizontal size={13} />
                   <span>筛选:</span>
                 </span>
@@ -281,8 +285,8 @@ export default function PublicApp() {
                       onClick={() => selectMedia(option.value)}
                       className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer shrink-0 ${
                         active
-                          ? "bg-white text-black shadow-sm"
-                          : "bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-200 border border-white/5"
+                          ? "bg-[var(--foreground)] text-[var(--background)] shadow-xs"
+                          : "bg-[var(--card)] hover:bg-[var(--surface-muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)]"
                       }`}
                     >
                       {option.label}
@@ -292,11 +296,11 @@ export default function PublicApp() {
               </div>
 
               {/* 当前状态小指标 */}
-              <div className="text-xs text-zinc-500 font-mono shrink-0 flex items-center gap-2">
+              <div className="text-xs text-[var(--muted-foreground)] font-mono shrink-0 flex items-center gap-2">
                 <span>{activeSource}</span>
                 <span>·</span>
                 <span>{messages.length} 条</span>
-                {loading && <span className="public-loading text-cyan-400 animate-pulse">正在更新…</span>}
+                {loading && <span className="public-loading text-cyan-500 animate-pulse font-medium">正在更新…</span>}
               </div>
             </div>
 
@@ -307,12 +311,12 @@ export default function PublicApp() {
             ) : null}
 
             {error && (
-              <div className="p-4 rounded-xl border border-red-500/20 bg-red-950/30 text-red-300 text-xs flex items-center justify-between">
+              <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300 text-xs flex items-center justify-between">
                 <span>{error}</span>
                 <button
                   type="button"
                   onClick={handleManualRefresh}
-                  className="underline hover:text-white ml-2"
+                  className="underline font-medium hover:opacity-80 ml-2"
                 >
                   重试
                 </button>

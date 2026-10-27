@@ -1,13 +1,17 @@
 module telegram-radar
 
-go 1.23
+go 1.26.0
 
 require (
-	github.com/PuerkitoBio/goquery v1.13.0 // indirect
+	github.com/PuerkitoBio/goquery v1.13.0
+	github.com/disintegration/imaging v1.6.2
+	github.com/go-chi/chi/v5 v5.5.0
+	modernc.org/sqlite v1.61.0
+)
+
+require (
 	github.com/andybalholm/cascadia v1.3.4 // indirect
-	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
-	github.com/go-chi/chi/v5 v5.5.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
@@ -15,9 +19,7 @@ require (
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.61.0 // indirect
 )
