@@ -1,42 +1,65 @@
 import { useState, useMemo } from "react";
-import { ExternalLink, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
+import { ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 
 interface RichContentProps {
   content: string;
   maxCollapsedLength?: number;
 }
 
-// URL 正则表达式
 const URL_REGEX = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
-// @username 正则
 const MENTION_REGEX = /(^|\s)(@[a-zA-Z0-9_]{4,32})/g;
 
-export default function RichContent({ content, maxCollapsedLength = 360 }: RichContentProps) {
+export default function RichContent({ content, maxCollapsedLength = 400 }: RichContentProps) {
   const isLong = content.length > maxCollapsedLength;
   const [expanded, setExpanded] = useState(false);
-  const [copied, setCopied] = useState(false);
 
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  // 规范化正文：收敛连续多个多余空行
+  const normalizedContent = useMemo(() => {
+    return content.trim().replace(/\n{3,}/g, "\n\n");
+  }, [content]);
 
-  const displayText = useMemo(() => {
-    if (!isLong || expanded) return content;
-    return content.slice(0, maxCollapsedLength) + "…";
-  }, [content, isLong, expanded, maxCollapsedLength]);
+  // 智能解析段落结构（首行大标题 + 正文段落 + 尾注签名）
+  const paragraphs = useMemo(() => {
+    const rawParagraphs = normalizedContent.split("\n\n").filter(Boolean);
+    if (!rawParagraphs.length) return [];
 
-  // 解析并高亮文本中的链接与 @提及
-  const parsedNodes = useMemo(() => {
-    const lines = displayText.split("\n");
-    return lines.map((line, lineIndex) => {
-      // 拆分 URL
+    // 判断第一段是否适合作为大标题展示（长度在 8~90 字符之间，且后续还有其他段落）
+    const firstPara = rawParagraphs[0].trim();
+    const hasHeader =
+      rawParagraphs.length > 1 &&
+      firstPara.length >= 8 &&
+      firstPara.length <= 90 &&
+      !firstPara.startsWith("http") &&
+      !firstPara.includes("\n");
+
+    return rawParagraphs.map((para, idx) => {
+      const isHeader = hasHeader && idx === 0;
+      const isFooter =
+        idx === rawParagraphs.length - 1 &&
+        (para.startsWith("🌸") ||
+          para.startsWith("📌") ||
+          para.startsWith("🏷️") ||
+          para.startsWith("#") ||
+          para.includes("投稿") ||
+          para.includes("茶馆") ||
+          para.includes("声明"));
+
+      return {
+        text: para,
+        isHeader,
+        isFooter,
+      };
+    });
+  }, [normalizedContent]);
+
+  // 处理文本中的高亮与链接
+  const renderFormattedText = (text: string) => {
+    const lines = text.split("\n");
+    return lines.map((line, lineIdx) => {
       const parts = line.split(URL_REGEX);
       return (
-        <span key={lineIndex} className="block min-h-[1.4em]">
-          {parts.map((part, partIndex) => {
+        <span key={lineIdx} className="block leading-relaxed">
+          {parts.map((part, partIdx) => {
             if (part.match(URL_REGEX)) {
               let displayUrl = part;
               try {
@@ -47,7 +70,7 @@ export default function RichContent({ content, maxCollapsedLength = 360 }: RichC
               }
               return (
                 <a
-                  key={partIndex}
+                  key={partIdx}
                   href={part}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -60,14 +83,13 @@ export default function RichContent({ content, maxCollapsedLength = 360 }: RichC
               );
             }
 
-            // 拆分 @mention
             const subParts = part.split(MENTION_REGEX);
-            return subParts.map((sub, subIndex) => {
+            return subParts.map((sub, subIdx) => {
               if (sub.startsWith("@")) {
                 const username = sub.slice(1);
                 return (
                   <a
-                    key={subIndex}
+                    key={subIdx}
                     href={`https://t.me/${username}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -84,59 +106,76 @@ export default function RichContent({ content, maxCollapsedLength = 360 }: RichC
         </span>
       );
     });
-  }, [displayText]);
+  };
 
   return (
-    <div className="relative group/content text-[14.5px] leading-relaxed text-[var(--foreground)]">
-      <div className={`overflow-hidden transition-all duration-300 ${!expanded && isLong ? "relative" : ""}`}>
-        {parsedNodes}
+    <div className="relative text-[15px] text-[var(--foreground)] font-normal tracking-normal select-text">
+      {/* 限制折叠高度 */}
+      <div
+        className={`transition-all duration-300 ${
+          !expanded && isLong ? "max-h-[220px] overflow-hidden relative" : ""
+        }`}
+      >
+        <div className="space-y-2.5">
+          {paragraphs.map((p, idx) => {
+            if (p.isHeader) {
+              return (
+                <h4
+                  key={idx}
+                  className="text-[16px] sm:text-[17px] font-semibold text-[var(--foreground)] leading-snug tracking-tight pb-0.5"
+                >
+                  {p.text}
+                </h4>
+              );
+            }
 
+            if (p.isFooter) {
+              return (
+                <div
+                  key={idx}
+                  className="pt-2 mt-2 border-t border-[var(--border)]/40 text-[12.5px] text-[var(--muted-foreground)] opacity-85"
+                >
+                  {renderFormattedText(p.text)}
+                </div>
+              );
+            }
+
+            return (
+              <p key={idx} className="text-[14.5px] sm:text-[15px] leading-relaxed text-[var(--foreground)]/90">
+                {renderFormattedText(p.text)}
+              </p>
+            );
+          })}
+        </div>
+
+        {/* 长文折叠平滑渐变蒙层 */}
         {!expanded && isLong && (
-          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[var(--card)] to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[var(--card)] via-[var(--card)]/80 to-transparent pointer-events-none" />
         )}
       </div>
 
-      <div className="flex items-center justify-between mt-2 pt-1 border-t border-[var(--border)]/40">
-        {isLong ? (
+      {/* 展开/收起按钮 */}
+      {isLong && (
+        <div className="flex justify-center mt-3 pt-1">
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors py-0.5 px-2 rounded-md hover:bg-[var(--surface-muted)] cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1 text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] bg-[var(--surface-muted)] hover:bg-[var(--accent)] border border-[var(--border)] rounded-full transition-all duration-150 cursor-pointer shadow-2xs"
           >
             {expanded ? (
               <>
                 <span>收起全文</span>
-                <ChevronUp size={14} />
+                <ChevronUp size={13} />
               </>
             ) : (
               <>
                 <span>展开全文</span>
-                <ChevronDown size={14} />
+                <ChevronDown size={13} />
               </>
             )}
           </button>
-        ) : <div />}
-
-        <button
-          type="button"
-          onClick={handleCopy}
-          aria-label="复制正文"
-          title="复制正文内容"
-          className="inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] opacity-60 group-hover/content:opacity-100 transition-all duration-200 py-1 px-2 rounded-md hover:bg-[var(--surface-muted)] cursor-pointer"
-        >
-          {copied ? (
-            <>
-              <Check size={13} className="text-emerald-500" />
-              <span className="text-emerald-500 font-medium">已复制</span>
-            </>
-          ) : (
-            <>
-              <Copy size={13} />
-              <span>复制</span>
-            </>
-          )}
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Download, ExternalLink, FileText, ImageOff, Inbox, Volume2, Link as LinkIcon, Check } from "lucide-react";
+import { Download, ExternalLink, FileText, ImageOff, Inbox, Volume2, Link as LinkIcon, Check, Copy } from "lucide-react";
 
 import type { MediaItem, Message } from "../types";
 import { cleanMessageContent, dayKey, formatDayLabel, formatTime, mediaLabel, sourceHue } from "../utils";
@@ -43,13 +43,13 @@ export default function MessageFeed({
 
   return (
     <>
-      <main id="message-list" className="message-list space-y-4" aria-label="消息时间线" tabIndex={-1}>
+      <main id="message-list" className="message-list space-y-5" aria-label="消息时间线" tabIndex={-1}>
         {initialLoading && !messages.length ? <MessageSkeleton /> : null}
 
         {groupedMessages(messages, groupDuplicates).map((entry) => (
           entry.type === "day" ? (
             <div key={entry.key} className="sticky top-2 z-10 flex items-center justify-center py-2 pointer-events-none">
-              <span className="px-3.5 py-1 text-xs font-semibold tracking-wider text-[var(--muted-foreground)] bg-[var(--card)] border border-[var(--border)] rounded-full backdrop-blur-md shadow-xs">
+              <span className="px-4 py-1 text-[11px] font-semibold tracking-wider text-[var(--muted-foreground)] bg-[var(--card)]/90 border border-[var(--border)] rounded-full backdrop-blur-md shadow-xs uppercase">
                 {entry.label}
               </span>
             </div>
@@ -58,7 +58,7 @@ export default function MessageFeed({
               <MessageCard density={density} message={entry.message} onOpenImage={openViewer} />
               {entry.similar.length ? (
                 <button
-                  className="similar-toggle text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] ml-4 py-1 px-2 rounded hover:bg-[var(--surface-muted)] transition-colors cursor-pointer"
+                  className="similar-toggle text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] ml-4 py-1 px-2.5 rounded-lg hover:bg-[var(--surface-muted)] transition-colors cursor-pointer"
                   type="button"
                   aria-expanded={expanded.includes(entry.message.id)}
                   onClick={() => setExpanded((ids) => ids.includes(entry.message.id) ? ids.filter((id) => id !== entry.message.id) : [...ids, entry.message.id])}
@@ -67,7 +67,7 @@ export default function MessageFeed({
                 </button>
               ) : null}
               {expanded.includes(entry.message.id) ? (
-                <div className="pl-4 border-l-2 border-[var(--border)] space-y-2">
+                <div className="pl-4 sm:pl-6 border-l-2 border-[var(--border)] space-y-3 mt-2">
                   {entry.similar.map((similar) => (
                     <MessageCard key={similar.id} density={density} message={similar} onOpenImage={openViewer} />
                   ))}
@@ -78,9 +78,9 @@ export default function MessageFeed({
         ))}
 
         {!initialLoading && hasMore ? (
-          <div className="flex justify-center pt-4 pb-8">
+          <div className="flex justify-center pt-4 pb-12">
             <button
-              className="load-more px-6 py-2.5 text-xs font-medium text-[var(--foreground)] bg-[var(--card)] hover:bg-[var(--surface-muted)] border border-[var(--border)] rounded-full shadow-xs backdrop-blur transition-all duration-200 cursor-pointer disabled:opacity-50"
+              className="load-more px-7 py-2.5 text-xs font-medium text-[var(--foreground)] bg-[var(--card)] hover:bg-[var(--surface-muted)] border border-[var(--border)] rounded-full shadow-xs backdrop-blur transition-all duration-200 cursor-pointer disabled:opacity-50"
               type="button"
               onClick={onLoadMore}
               disabled={loadingMore}
@@ -89,13 +89,13 @@ export default function MessageFeed({
             </button>
           </div>
         ) : !initialLoading && messages.length ? (
-          <div className="feed-end text-center text-xs text-[var(--muted-foreground)] py-8 border-t border-[var(--border)]">
+          <div className="feed-end text-center text-xs text-[var(--muted-foreground)] py-10 border-t border-[var(--border)]">
             已显示全部匹配消息
           </div>
         ) : !initialLoading ? (
-          <div className="empty-state flex flex-col items-center justify-center p-12 text-center border border-dashed border-[var(--border)] rounded-2xl bg-[var(--card)]">
-            <Inbox size={32} className="text-[var(--muted-foreground)] mb-3" aria-hidden="true" />
-            <strong className="text-sm text-[var(--foreground)]">没有匹配消息</strong>
+          <div className="empty-state flex flex-col items-center justify-center p-14 text-center border border-dashed border-[var(--border)] rounded-2xl bg-[var(--card)]">
+            <Inbox size={36} className="text-[var(--muted-foreground)] mb-3 opacity-60" aria-hidden="true" />
+            <strong className="text-sm font-semibold text-[var(--foreground)]">没有匹配消息</strong>
             <span className="text-xs text-[var(--muted-foreground)] mt-1">调整来源、媒体类型或关键词后再试。</span>
           </div>
         ) : null}
@@ -123,13 +123,13 @@ export function MessageCard({
   onOpenImage: (image: OpenImage, trigger: HTMLButtonElement | null) => void;
 }) {
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
   const mediaItems = normalizedMediaItems(message);
   const speaker = message.sender_name || "未知发送者";
   const source = message.chat_title || "未知来源";
   const titleId = `message-${message.id}-title`;
   const markHue = sourceHue(`${message.chat_id ?? source}`);
 
-  // 清理正文中的 [photo] / [video] / [document] 前缀
   const cleanedContent = cleanMessageContent(message.content);
 
   const handleCopyLink = (e: React.MouseEvent) => {
@@ -141,15 +141,26 @@ export function MessageCard({
     }
   };
 
+  const handleCopyText = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (cleanedContent) {
+      navigator.clipboard.writeText(cleanedContent);
+      setCopiedText(true);
+      setTimeout(() => setCopiedText(false), 2000);
+    }
+  };
+
   return (
     <article
-      className="message-card group relative rounded-xl border border-[var(--border)] bg-[var(--card)] hover:border-[var(--ring)] backdrop-blur-md p-4 sm:p-5 transition-all duration-200 shadow-xs hover:shadow-md"
+      className="message-card group relative rounded-2xl border border-[var(--border)] bg-[var(--card)] hover:border-[var(--ring)]/50 p-5 sm:p-6 transition-all duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-md"
       aria-labelledby={titleId}
     >
-      <header className="message-byline flex items-center justify-between mb-3">
-        <div className="message-byline-main flex items-center gap-2.5 min-w-0">
+      {/* 头部元信息栏 */}
+      <header className="message-byline flex items-center justify-between gap-3 mb-3.5 pb-2.5 border-b border-[var(--border)]/30">
+        <div className="message-byline-main flex items-center gap-3 min-w-0">
+          {/* iOS Squircle 风格头像 */}
           <div
-            className="source-mark w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-xs shrink-0"
+            className="source-mark w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-xs shrink-0 select-none"
             style={{
               background: `linear-gradient(135deg, hsl(${markHue} 70% 45%), hsl(${markHue + 40} 75% 35%))`,
             }}
@@ -158,29 +169,43 @@ export function MessageCard({
             {source.slice(0, 1).toUpperCase()}
           </div>
 
-          <div className="min-w-0 flex flex-col">
+          <div className="min-w-0 flex flex-col justify-center">
             <div className="flex items-center gap-1.5 min-w-0">
-              <h3 id={titleId} className="text-sm font-semibold text-[var(--foreground)] truncate">
+              <h3 id={titleId} className="text-[14.5px] font-semibold text-[var(--foreground)] truncate leading-tight">
                 {source}
               </h3>
               {speaker !== source && (
                 <span className="byline-speaker text-xs text-[var(--muted-foreground)] truncate">· {speaker}</span>
               )}
             </div>
-            <time dateTime={message.message_time} className="text-[11px] text-[var(--muted-foreground)]">
+            <time dateTime={message.message_time} className="text-[11.5px] text-[var(--muted-foreground)] font-mono mt-0.5">
               {formatTime(message.message_time)}
             </time>
           </div>
         </div>
 
+        {/* 右上角快捷操作栏 */}
         <div className="flex items-center gap-1 text-[var(--muted-foreground)] opacity-70 group-hover:opacity-100 transition-opacity">
+          {cleanedContent && (
+            <button
+              type="button"
+              onClick={handleCopyText}
+              title="复制正文"
+              aria-label="复制正文内容"
+              className="p-1.5 hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)] rounded-lg transition-colors cursor-pointer"
+            >
+              {copiedText ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+            </button>
+          )}
+
           {message.source_url && (
             <>
               <button
                 type="button"
                 onClick={handleCopyLink}
                 title="复制 Telegram 原文链接"
-                className="p-1.5 hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)] rounded-md transition-colors cursor-pointer"
+                aria-label="复制 Telegram 原文链接"
+                className="p-1.5 hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)] rounded-lg transition-colors cursor-pointer"
               >
                 {copiedLink ? <Check size={14} className="text-emerald-500" /> : <LinkIcon size={14} />}
               </button>
@@ -190,7 +215,7 @@ export function MessageCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 title="跳转 Telegram 查看原文"
-                className="source-link inline-flex items-center gap-1 text-xs px-2 py-1 hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)] rounded-md transition-colors"
+                className="source-link inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)] rounded-lg transition-colors ml-0.5"
               >
                 <span>原文</span>
                 <ExternalLink size={12} />
@@ -200,23 +225,25 @@ export function MessageCard({
         </div>
       </header>
 
+      {/* 正文内容增强（超链接解析、段落分层、长文折叠） */}
       {cleanedContent ? (
         <RichContent content={cleanedContent} />
       ) : (
         <p className="message-text text-xs text-[var(--muted-foreground)] italic">仅包含{mediaLabel(message.media_type || "text")}</p>
       )}
 
+      {/* 多媒体相册展示 */}
       {mediaItems.length ? (
-        <div className="media-grid mt-3">
+        <div className="media-grid mt-4">
           <MediaGallery items={mediaItems} message={message} onOpenImage={onOpenImage} />
         </div>
       ) : null}
 
       {density === "console" ? (
-        <footer className="message-foot mt-3 pt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px] text-[var(--muted-foreground)] font-mono">
+        <footer className="message-foot mt-3.5 pt-2 border-t border-[var(--border)]/60 flex items-center justify-between text-[11px] text-[var(--muted-foreground)] font-mono">
           <span>消息 #{message.message_id}</span>
           {message.media_type && (
-            <span className="media-badge px-1.5 py-0.5 rounded bg-[var(--surface-muted)] text-[var(--foreground)]">
+            <span className="media-badge px-2 py-0.5 rounded-md bg-[var(--surface-muted)] text-[var(--foreground)]">
               {mediaLabel(message.media_type)}
             </span>
           )}
@@ -226,6 +253,7 @@ export function MessageCard({
   );
 }
 
+// 优化的相册画廊
 function MediaGallery({
   items,
   message,
@@ -239,16 +267,16 @@ function MediaGallery({
 
   if (count === 1) {
     return (
-      <div className="overflow-hidden rounded-lg max-h-[460px] bg-[var(--surface-muted)] flex justify-center border border-[var(--border)]">
+      <div className="overflow-hidden rounded-xl border border-[var(--border)] shadow-xs max-h-[520px] flex justify-center bg-black/5 dark:bg-black/30">
         <MediaAttachment item={items[0]} message={message} index={0} onOpenImage={onOpenImage} />
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 overflow-hidden rounded-lg">
+    <div className="grid grid-cols-2 gap-2 overflow-hidden rounded-xl">
       {items.map((item, idx) => (
-        <div key={idx} className="aspect-[4/3] overflow-hidden rounded-md bg-[var(--surface-muted)] border border-[var(--border)]">
+        <div key={idx} className="aspect-[4/3] overflow-hidden rounded-lg border border-[var(--border)] shadow-2xs bg-black/5 dark:bg-black/30">
           <MediaAttachment item={item} message={message} index={idx} onOpenImage={onOpenImage} />
         </div>
       ))}
@@ -278,7 +306,7 @@ function MediaAttachment({
 
   if (failed) {
     return (
-      <a className="media-fallback flex items-center gap-2 p-3 text-xs text-[var(--muted-foreground)] bg-[var(--surface-muted)] rounded-lg hover:text-[var(--foreground)]" href={fallbackUrl} target="_blank" rel="noopener noreferrer">
+      <a className="media-fallback flex items-center gap-2 p-3.5 text-xs text-[var(--muted-foreground)] bg-[var(--surface-muted)] rounded-xl hover:text-[var(--foreground)]" href={fallbackUrl} target="_blank" rel="noopener noreferrer">
         <ImageOff size={16} aria-hidden="true" />
         <span>媒体加载失败，打开原文</span>
       </a>
@@ -287,7 +315,7 @@ function MediaAttachment({
 
   if (["audio", "voice"].includes(kind) || ["audio", "voice"].includes(type)) {
     return (
-      <div className="audio-card flex items-center gap-2 p-2 bg-[var(--surface-muted)] rounded-lg border border-[var(--border)]">
+      <div className="audio-card flex items-center gap-2.5 p-3 bg-[var(--surface-muted)] rounded-xl border border-[var(--border)]">
         <Volume2 size={18} className="text-[var(--muted-foreground)]" aria-hidden="true" />
         <audio className="audio-control w-full h-8" controls preload="metadata" aria-label={`${source}中的音频`} onError={() => setFailed(true)}>
           <source src={item.url} />
@@ -299,15 +327,15 @@ function MediaAttachment({
   if (["document", "file"].includes(kind) || type === "document") {
     return (
       <a
-        className="file-card flex items-center justify-between p-3 bg-[var(--surface-muted)] hover:bg-[var(--accent)] rounded-lg border border-[var(--border)] text-[var(--foreground)] transition-colors group/file"
+        className="file-card flex items-center justify-between p-3.5 bg-[var(--surface-muted)] hover:bg-[var(--accent)] rounded-xl border border-[var(--border)] text-[var(--foreground)] transition-colors group/file"
         href={item.url}
         download
         aria-label="下载文件"
       >
-        <div className="flex items-center gap-2.5">
-          <FileText size={20} className="text-blue-500" aria-hidden="true" />
+        <div className="flex items-center gap-3">
+          <FileText size={22} className="text-blue-500" aria-hidden="true" />
           <div className="flex flex-col">
-            <strong className="text-xs font-medium">附件文件</strong>
+            <strong className="text-xs font-semibold">附件文件</strong>
             <small className="text-[11px] text-[var(--muted-foreground)]">通过受保护的媒体缓存下载</small>
           </div>
         </div>
@@ -321,7 +349,7 @@ function MediaAttachment({
   if (["video", "animation"].includes(kind)) {
     return (
       <video
-        className="media-video w-full h-full max-h-[460px] object-cover rounded-lg"
+        className="media-video w-full h-full max-h-[520px] object-contain rounded-xl"
         controls
         preload="metadata"
         aria-label={`${source}中的视频`}
@@ -335,7 +363,7 @@ function MediaAttachment({
   return (
     <button
       ref={imageButtonRef}
-      className="media-image-trigger w-full h-full overflow-hidden flex items-center justify-center cursor-zoom-in bg-[var(--surface-muted)] border-0 p-0"
+      className="media-image-trigger w-full h-full overflow-hidden flex items-center justify-center cursor-zoom-in border-0 p-0"
       type="button"
       aria-label={`查看完整图片 ${index + 1}`}
       onClick={() => onOpenImage({
@@ -344,7 +372,7 @@ function MediaAttachment({
       }, imageButtonRef.current)}
     >
       <img
-        className={`media-image-contained w-full h-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100 is-loaded" : "opacity-0"}`}
+        className={`media-image-contained w-full h-full object-contain max-h-[500px] transition-opacity duration-300 ${loaded ? "opacity-100 is-loaded" : "opacity-0"}`}
         src={item.url}
         alt={`${source}中${speaker}发布的图片 ${index + 1}`}
         loading="lazy"
@@ -360,17 +388,17 @@ function MessageSkeleton() {
   return (
     <div className="space-y-4">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 space-y-3 animate-pulse">
+        <div key={i} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3.5 animate-pulse">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[var(--surface-muted)]" />
+            <div className="w-9 h-9 rounded-xl bg-[var(--surface-muted)]" />
             <div className="space-y-1.5">
-              <div className="w-24 h-3.5 bg-[var(--surface-muted)] rounded" />
-              <div className="w-16 h-2.5 bg-[var(--surface-muted)] rounded" />
+              <div className="w-28 h-3.5 bg-[var(--surface-muted)] rounded-md" />
+              <div className="w-16 h-2.5 bg-[var(--surface-muted)] rounded-md" />
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 pt-1">
             <div className="w-full h-3 bg-[var(--surface-muted)] rounded" />
-            <div className="w-3/4 h-3 bg-[var(--surface-muted)] rounded" />
+            <div className="w-4/5 h-3 bg-[var(--surface-muted)] rounded" />
           </div>
         </div>
       ))}
