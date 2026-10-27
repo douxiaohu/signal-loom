@@ -9,6 +9,7 @@ RUN npm run build
 # Stage 2: 编译 Go 二进制服务
 FROM golang:1.24-alpine AS go-builder
 WORKDIR /build
+ENV GOTOOLCHAIN=auto
 
 # 缓存依赖层
 COPY go.mod go.sum ./
