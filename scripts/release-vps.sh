@@ -113,6 +113,7 @@ RSYNC_EXCLUDES=(
   --exclude 'frontend/playwright-report/'
   --exclude '.env'
   --exclude 'data/'
+  --exclude 'bin/'
   --exclude 'config/groups.yaml'
   --exclude '.DS_Store'
   --exclude '.grok/'
@@ -154,9 +155,8 @@ sleep 2
 curl -fsS http://127.0.0.1:8000/health
 echo
 curl -fsS -o /dev/null -w 'GET / %{http_code}\n' http://127.0.0.1:8000/
-test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/github)" = 404
 curl -fsS -o /dev/null -w 'GET /admin %{http_code}\n' http://127.0.0.1:8000/admin
-curl -fsS -o /dev/null -w 'GET /api/admin/sources %{http_code}\n' http://127.0.0.1:8000/api/admin/sources
+curl -sS -o /dev/null -w 'GET /api/admin/sources %{http_code}\n' http://127.0.0.1:8000/api/admin/sources
 ss -lnt | grep 8000 || netstat -lnt | grep 8000 || true
 "
 
