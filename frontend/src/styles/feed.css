@@ -18,11 +18,30 @@
 }
 .day-label:first-child { margin-top: 4px; }
 
-.message-card {
-  padding: 16px 0 18px;
-  border-bottom: 1px solid var(--line-soft);
-  background: transparent;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
+.message-card {
+  position: relative;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.message-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px -10px rgba(0, 240, 255, 0.15), 0 0 1px 1px rgba(0, 240, 255, 0.2);
+}
+
 .message-card.is-console {
   padding: 16px 0 18px;
   border: 0;
@@ -30,6 +49,7 @@
   border-radius: 0;
   margin-bottom: 0;
   background: transparent;
+  animation: none;
 }
 .message-byline {
   display: flex;

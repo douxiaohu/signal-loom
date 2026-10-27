@@ -14,7 +14,7 @@ const storageKey = "tm-theme";
 function readTheme(): ThemeId {
   const stored = window.localStorage.getItem(storageKey);
   if (stored === "midnight" || stored === "aurora" || stored === "ember" || stored === "paper") return stored;
-  return "paper";
+  return "midnight";
 }
 
 function applyTheme(theme: ThemeId) {
@@ -24,7 +24,7 @@ function applyTheme(theme: ThemeId) {
 
 function selectTheme(event: ChangeEvent<HTMLSelectElement>) {
   const value = event.target.value;
-  const theme = value === "midnight" || value === "aurora" || value === "ember" || value === "paper" ? value : "paper";
+  const theme = value === "midnight" || value === "aurora" || value === "ember" || value === "paper" ? value : "midnight";
   applyTheme(theme);
   window.localStorage.setItem(storageKey, theme);
 }

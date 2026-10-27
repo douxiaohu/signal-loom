@@ -9,11 +9,71 @@ body {
   margin: 0;
   overflow-x: hidden;
   background:
-    radial-gradient(980px 380px at 50% -200px, color-mix(in oklch, var(--link) 8%, transparent), transparent 68%),
+    radial-gradient(1200px 600px at 50% -120px, rgba(0, 240, 255, 0.07), transparent 70%),
+    radial-gradient(800px 500px at 85% 20%, rgba(124, 58, 237, 0.05), transparent 60%),
     var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Custom Cyberpunk Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neon);
+  box-shadow: 0 0 10px var(--neon);
+}
+
+/* ── Shimmer Animation for Modern Skeletons ── */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer-box {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.shimmer-box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Neon Glow Focus & Rings ── */
+.neon-glow {
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), 0 0 30px rgba(0, 240, 255, 0.1);
+}
+
+.neon-border-glow:focus-within {
+  border-color: var(--neon) !important;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
 }
 ::selection { background: color-mix(in oklch, var(--foreground) 14%, transparent); }
 button, input, select, textarea { font: inherit; }

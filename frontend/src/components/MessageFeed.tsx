@@ -43,31 +43,32 @@ export default function MessageFeed({
 
   return (
     <>
-      <main id="message-list" className="message-list space-y-5" aria-label="消息时间线" tabIndex={-1}>
+      <main id="message-list" className="message-list space-y-6" aria-label="消息时间线" tabIndex={-1}>
         {initialLoading && !messages.length ? <MessageSkeleton /> : null}
 
         {groupedMessages(messages, groupDuplicates).map((entry) => (
           entry.type === "day" ? (
-            <div key={entry.key} className="sticky top-2 z-10 flex items-center justify-center py-2 pointer-events-none">
-              <span className="px-4 py-1 text-[11px] font-semibold tracking-wider text-[var(--muted-foreground)] bg-[var(--card)]/90 border border-[var(--border)] rounded-full backdrop-blur-md shadow-xs uppercase">
+            <div key={entry.key} className="sticky top-16 z-20 flex items-center justify-center py-2 pointer-events-none">
+              <span className="px-4 py-1 text-[11px] font-mono font-semibold tracking-widest text-[var(--neon)] bg-[var(--card)]/90 border border-[var(--neon)]/30 rounded-full backdrop-blur-xl shadow-[0_0_15px_rgba(0,240,255,0.2)] uppercase">
                 {entry.label}
               </span>
             </div>
           ) : (
-            <div key={entry.message.id} className="space-y-2">
+            <div key={entry.message.id} className="space-y-3">
               <MessageCard density={density} message={entry.message} onOpenImage={openViewer} />
               {entry.similar.length ? (
                 <button
-                  className="similar-toggle text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] ml-4 py-1 px-2.5 rounded-lg hover:bg-[var(--surface-muted)] transition-colors cursor-pointer"
+                  className="similar-toggle text-xs text-[var(--muted-foreground)] hover:text-[var(--neon)] ml-4 py-1 px-3 rounded-lg hover:bg-[var(--surface-muted)] transition-all duration-150 cursor-pointer flex items-center gap-1.5"
                   type="button"
                   aria-expanded={expanded.includes(entry.message.id)}
                   onClick={() => setExpanded((ids) => ids.includes(entry.message.id) ? ids.filter((id) => id !== entry.message.id) : [...ids, entry.message.id])}
                 >
-                  {expanded.includes(entry.message.id) ? "隐藏" : "显示"} {entry.similar.length} 条相似消息
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--neon)]/60" />
+                  <span>{expanded.includes(entry.message.id) ? "隐藏" : "显示"} {entry.similar.length} 条相似消息</span>
                 </button>
               ) : null}
               {expanded.includes(entry.message.id) ? (
-                <div className="pl-4 sm:pl-6 border-l-2 border-[var(--border)] space-y-3 mt-2">
+                <div className="pl-4 sm:pl-6 border-l-2 border-[var(--neon)]/40 space-y-3 mt-2">
                   {entry.similar.map((similar) => (
                     <MessageCard key={similar.id} density={density} message={similar} onOpenImage={openViewer} />
                   ))}
@@ -78,9 +79,9 @@ export default function MessageFeed({
         ))}
 
         {!initialLoading && hasMore ? (
-          <div className="flex justify-center pt-4 pb-12">
+          <div className="flex justify-center pt-6 pb-12">
             <button
-              className="load-more px-7 py-2.5 text-xs font-medium text-[var(--foreground)] bg-[var(--card)] hover:bg-[var(--surface-muted)] border border-[var(--border)] rounded-full shadow-xs backdrop-blur transition-all duration-200 cursor-pointer disabled:opacity-50"
+              className="load-more px-8 py-3 text-xs font-semibold tracking-wider text-[var(--foreground)] bg-[var(--card)]/80 hover:bg-[var(--surface-muted)] border border-[var(--border)] hover:border-[var(--neon)]/50 rounded-full shadow-lg hover:shadow-[0_0_20px_rgba(0,240,255,0.2)] backdrop-blur-xl transition-all duration-200 cursor-pointer disabled:opacity-50 active:scale-95"
               type="button"
               onClick={onLoadMore}
               disabled={loadingMore}
@@ -89,12 +90,12 @@ export default function MessageFeed({
             </button>
           </div>
         ) : !initialLoading && messages.length ? (
-          <div className="feed-end text-center text-xs text-[var(--muted-foreground)] py-10 border-t border-[var(--border)]">
-            已显示全部匹配消息
+          <div className="feed-end text-center text-xs text-[var(--muted-foreground)] py-12 border-t border-[var(--border)]/40 font-mono">
+            // ALL MESSAGES LOADED //
           </div>
         ) : !initialLoading ? (
-          <div className="empty-state flex flex-col items-center justify-center p-14 text-center border border-dashed border-[var(--border)] rounded-2xl bg-[var(--card)]">
-            <Inbox size={36} className="text-[var(--muted-foreground)] mb-3 opacity-60" aria-hidden="true" />
+          <div className="empty-state flex flex-col items-center justify-center p-14 text-center border border-dashed border-[var(--border)] rounded-3xl bg-[var(--card)]/40 backdrop-blur-xl">
+            <Inbox size={40} className="text-[var(--neon)] mb-3 opacity-60 animate-pulse" aria-hidden="true" />
             <strong className="text-sm font-semibold text-[var(--foreground)]">没有匹配消息</strong>
             <span className="text-xs text-[var(--muted-foreground)] mt-1">调整来源、媒体类型或关键词后再试。</span>
           </div>
@@ -152,17 +153,17 @@ export function MessageCard({
 
   return (
     <article
-      className="message-card group relative rounded-2xl border border-[var(--border)] bg-[var(--card)] hover:border-[var(--ring)]/50 p-5 sm:p-6 transition-all duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-md"
+      className="message-card group relative rounded-3xl border border-[var(--border)] bg-[var(--card)]/50 backdrop-blur-xl p-5 sm:p-6 transition-all duration-300 hover:border-[var(--neon)]/50 hover:-translate-y-1 hover:shadow-[0_12px_35px_-10px_rgba(0,240,255,0.18)]"
       aria-labelledby={titleId}
     >
       {/* 头部元信息栏 */}
-      <header className="message-byline flex items-center justify-between gap-3 mb-3.5 pb-2.5 border-b border-[var(--border)]/30">
-        <div className="message-byline-main flex items-center gap-3 min-w-0">
-          {/* iOS Squircle 风格头像 */}
+      <header className="message-byline flex items-center justify-between gap-3 mb-4 pb-3 border-b border-[var(--border)]/30">
+        <div className="message-byline-main flex items-center gap-3.5 min-w-0">
+          {/* Cyberpunk Squircle 头像 */}
           <div
-            className="source-mark w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-xs shrink-0 select-none"
+            className="source-mark relative w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold text-white shadow-md shrink-0 select-none ring-1 ring-white/10 group-hover:scale-105 transition-transform duration-200"
             style={{
-              background: `linear-gradient(135deg, hsl(${markHue} 70% 45%), hsl(${markHue + 40} 75% 35%))`,
+              background: `linear-gradient(135deg, hsl(${markHue} 80% 48%), hsl(${markHue + 40} 85% 32%))`,
             }}
             aria-hidden="true"
           >
@@ -170,31 +171,31 @@ export function MessageCard({
           </div>
 
           <div className="min-w-0 flex flex-col justify-center">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <h3 id={titleId} className="text-[14.5px] font-semibold text-[var(--foreground)] truncate leading-tight">
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 id={titleId} className="text-[15px] font-bold text-[var(--foreground)] truncate leading-tight tracking-tight">
                 {source}
               </h3>
               {speaker !== source && (
                 <span className="byline-speaker text-xs text-[var(--muted-foreground)] truncate">· {speaker}</span>
               )}
             </div>
-            <time dateTime={message.message_time} className="text-[11.5px] text-[var(--muted-foreground)] font-mono mt-0.5">
+            <time dateTime={message.message_time} className="text-[11px] text-[var(--muted-foreground)] font-mono mt-0.5">
               {formatTime(message.message_time)}
             </time>
           </div>
         </div>
 
-        {/* 右上角快捷操作栏 */}
-        <div className="flex items-center gap-1 text-[var(--muted-foreground)] opacity-70 group-hover:opacity-100 transition-opacity">
+        {/* 悬浮操作栏 (Smooth reveal on hover with neon micro-interaction) */}
+        <div className="flex items-center gap-1.5 opacity-80 sm:opacity-40 group-hover:opacity-100 transition-all duration-200">
           {cleanedContent && (
             <button
               type="button"
               onClick={handleCopyText}
               title="复制正文"
               aria-label="复制正文内容"
-              className="p-1.5 hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)] rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 hover:text-[var(--neon)] hover:bg-[var(--surface-muted)] rounded-xl transition-all duration-150 cursor-pointer active:scale-90"
             >
-              {copiedText ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+              {copiedText ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
             </button>
           )}
 
@@ -205,9 +206,9 @@ export function MessageCard({
                 onClick={handleCopyLink}
                 title="复制 Telegram 原文链接"
                 aria-label="复制 Telegram 原文链接"
-                className="p-1.5 hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)] rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 hover:text-[var(--neon)] hover:bg-[var(--surface-muted)] rounded-xl transition-all duration-150 cursor-pointer active:scale-90"
               >
-                {copiedLink ? <Check size={14} className="text-emerald-500" /> : <LinkIcon size={14} />}
+                {copiedLink ? <Check size={14} className="text-emerald-400" /> : <LinkIcon size={14} />}
               </button>
 
               <a
@@ -215,7 +216,7 @@ export function MessageCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 title="跳转 Telegram 查看原文"
-                className="source-link inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)] rounded-lg transition-colors ml-0.5"
+                className="source-link inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 text-[var(--foreground)]/80 hover:text-[var(--neon)] bg-[var(--surface-muted)]/50 hover:bg-[var(--card)] border border-[var(--border)] hover:border-[var(--neon)]/40 rounded-xl transition-all duration-200 ml-1 hover:shadow-[0_0_10px_rgba(0,240,255,0.2)]"
               >
                 <span>原文</span>
                 <ExternalLink size={12} />
@@ -229,7 +230,7 @@ export function MessageCard({
       {cleanedContent ? (
         <RichContent content={cleanedContent} />
       ) : (
-        <p className="message-text text-xs text-[var(--muted-foreground)] italic">仅包含{mediaLabel(message.media_type || "text")}</p>
+        <p className="message-text text-xs text-[var(--muted-foreground)] italic font-mono">仅包含{mediaLabel(message.media_type || "text")}</p>
       )}
 
       {/* 多媒体相册展示 */}
@@ -240,10 +241,10 @@ export function MessageCard({
       ) : null}
 
       {density === "console" ? (
-        <footer className="message-foot mt-3.5 pt-2 border-t border-[var(--border)]/60 flex items-center justify-between text-[11px] text-[var(--muted-foreground)] font-mono">
+        <footer className="message-foot mt-4 pt-2.5 border-t border-[var(--border)]/40 flex items-center justify-between text-[11px] text-[var(--muted-foreground)] font-mono">
           <span>消息 #{message.message_id}</span>
           {message.media_type && (
-            <span className="media-badge px-2 py-0.5 rounded-md bg-[var(--surface-muted)] text-[var(--foreground)]">
+            <span className="media-badge px-2 py-0.5 rounded-md bg-[var(--surface-muted)] text-[var(--foreground)] border border-[var(--border)]">
               {mediaLabel(message.media_type)}
             </span>
           )}
@@ -253,7 +254,7 @@ export function MessageCard({
   );
 }
 
-// 优化的相册画廊
+// 优化的未来感多媒体画廊
 function MediaGallery({
   items,
   message,
@@ -267,16 +268,16 @@ function MediaGallery({
 
   if (count === 1) {
     return (
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] shadow-xs max-h-[520px] flex justify-center bg-black/5 dark:bg-black/30">
+      <div className="overflow-hidden rounded-2xl border border-[var(--border)] shadow-md max-h-[520px] flex justify-center bg-black/40 backdrop-blur-md">
         <MediaAttachment item={items[0]} message={message} index={0} onOpenImage={onOpenImage} />
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 overflow-hidden rounded-xl">
+    <div className="grid grid-cols-2 gap-2.5 overflow-hidden rounded-2xl">
       {items.map((item, idx) => (
-        <div key={idx} className="aspect-[4/3] overflow-hidden rounded-lg border border-[var(--border)] shadow-2xs bg-black/5 dark:bg-black/30">
+        <div key={idx} className="aspect-[4/3] overflow-hidden rounded-xl border border-[var(--border)] shadow-sm bg-black/40 backdrop-blur-md hover:border-[var(--neon)]/40 transition-colors">
           <MediaAttachment item={item} message={message} index={idx} onOpenImage={onOpenImage} />
         </div>
       ))}
@@ -306,7 +307,7 @@ function MediaAttachment({
 
   if (failed) {
     return (
-      <a className="media-fallback flex items-center gap-2 p-3.5 text-xs text-[var(--muted-foreground)] bg-[var(--surface-muted)] rounded-xl hover:text-[var(--foreground)]" href={fallbackUrl} target="_blank" rel="noopener noreferrer">
+      <a className="media-fallback flex items-center gap-2 p-3.5 text-xs text-[var(--muted-foreground)] bg-[var(--surface-muted)] rounded-xl hover:text-[var(--foreground)] border border-[var(--border)]" href={fallbackUrl} target="_blank" rel="noopener noreferrer">
         <ImageOff size={16} aria-hidden="true" />
         <span>媒体加载失败，打开原文</span>
       </a>
@@ -315,8 +316,8 @@ function MediaAttachment({
 
   if (["audio", "voice"].includes(kind) || ["audio", "voice"].includes(type)) {
     return (
-      <div className="audio-card flex items-center gap-2.5 p-3 bg-[var(--surface-muted)] rounded-xl border border-[var(--border)]">
-        <Volume2 size={18} className="text-[var(--muted-foreground)]" aria-hidden="true" />
+      <div className="audio-card flex items-center gap-3 p-3 bg-[var(--surface-muted)]/80 rounded-2xl border border-[var(--border)] backdrop-blur-md">
+        <Volume2 size={18} className="text-[var(--neon)]" aria-hidden="true" />
         <audio className="audio-control w-full h-8" controls preload="metadata" aria-label={`${source}中的音频`} onError={() => setFailed(true)}>
           <source src={item.url} />
         </audio>
@@ -327,19 +328,19 @@ function MediaAttachment({
   if (["document", "file"].includes(kind) || type === "document") {
     return (
       <a
-        className="file-card flex items-center justify-between p-3.5 bg-[var(--surface-muted)] hover:bg-[var(--accent)] rounded-xl border border-[var(--border)] text-[var(--foreground)] transition-colors group/file"
+        className="file-card flex items-center justify-between p-3.5 bg-[var(--surface-muted)]/80 hover:bg-[var(--card)] rounded-2xl border border-[var(--border)] hover:border-[var(--neon)]/40 text-[var(--foreground)] transition-all duration-200 group/file backdrop-blur-md"
         href={item.url}
         download
         aria-label="下载文件"
       >
         <div className="flex items-center gap-3">
-          <FileText size={22} className="text-blue-500" aria-hidden="true" />
+          <FileText size={22} className="text-[var(--neon)]" aria-hidden="true" />
           <div className="flex flex-col">
             <strong className="text-xs font-semibold">附件文件</strong>
-            <small className="text-[11px] text-[var(--muted-foreground)]">通过受保护的媒体缓存下载</small>
+            <small className="text-[11px] text-[var(--muted-foreground)] font-mono">受保护的媒体资源</small>
           </div>
         </div>
-        <span className="file-action inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)] group-hover/file:text-[var(--foreground)] transition-colors">
+        <span className="file-action inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)] group-hover/file:text-[var(--neon)] transition-colors">
           <Download size={14} aria-hidden="true" /> 下载文件
         </span>
       </a>
@@ -349,7 +350,7 @@ function MediaAttachment({
   if (["video", "animation"].includes(kind)) {
     return (
       <video
-        className="media-video w-full h-full max-h-[520px] object-contain rounded-xl"
+        className="media-video w-full h-full max-h-[520px] object-contain rounded-2xl"
         controls
         preload="metadata"
         aria-label={`${source}中的视频`}
@@ -363,7 +364,7 @@ function MediaAttachment({
   return (
     <button
       ref={imageButtonRef}
-      className="media-image-trigger w-full h-full overflow-hidden flex items-center justify-center cursor-zoom-in border-0 p-0"
+      className="media-image-trigger w-full h-full overflow-hidden flex items-center justify-center cursor-zoom-in border-0 p-0 relative group/img"
       type="button"
       aria-label={`查看完整图片 ${index + 1}`}
       onClick={() => onOpenImage({
@@ -372,7 +373,7 @@ function MediaAttachment({
       }, imageButtonRef.current)}
     >
       <img
-        className={`media-image-contained w-full h-full object-contain max-h-[500px] transition-opacity duration-300 ${loaded ? "opacity-100 is-loaded" : "opacity-0"}`}
+        className={`media-image-contained w-full h-full object-contain max-h-[500px] transition-all duration-300 group-hover/img:scale-102 ${loaded ? "opacity-100 is-loaded" : "opacity-0"}`}
         src={item.url}
         alt={`${source}中${speaker}发布的图片 ${index + 1}`}
         loading="lazy"
@@ -384,21 +385,23 @@ function MediaAttachment({
   );
 }
 
+// 现代流动流光骨架屏 (Shimmer Skeleton Screen)
 function MessageSkeleton() {
   return (
     <div className="space-y-4">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3.5 animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[var(--surface-muted)]" />
-            <div className="space-y-1.5">
-              <div className="w-28 h-3.5 bg-[var(--surface-muted)] rounded-md" />
-              <div className="w-16 h-2.5 bg-[var(--surface-muted)] rounded-md" />
+        <div key={i} className="shimmer-box rounded-3xl p-6 space-y-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-white/5" />
+            <div className="space-y-2">
+              <div className="w-32 h-4 bg-white/5 rounded-md" />
+              <div className="w-20 h-3 bg-white/5 rounded-md" />
             </div>
           </div>
-          <div className="space-y-2 pt-1">
-            <div className="w-full h-3 bg-[var(--surface-muted)] rounded" />
-            <div className="w-4/5 h-3 bg-[var(--surface-muted)] rounded" />
+          <div className="space-y-2.5 pt-1">
+            <div className="w-full h-3.5 bg-white/5 rounded-md" />
+            <div className="w-5/6 h-3.5 bg-white/5 rounded-md" />
+            <div className="w-3/5 h-3.5 bg-white/5 rounded-md" />
           </div>
         </div>
       ))}
