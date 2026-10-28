@@ -289,4 +289,75 @@ describe("App", () => {
     const alertCard = screen.getByRole("region", { name: "规则命中" });
     await waitFor(() => expect(alertCard).toHaveFocus());
   });
+
+  it("explains why 'load more' failed and keeps the messages already listed", async () => {
+    installBaseFetch((url) => {
+      if (url.searchParams.get("cursor") === "next") return json({ detail: "数据库繁忙" }, 503);
+      return json({ items: [message(1, "已加载消息")], has_more: true, next_cursor: "next", total: null });
+    });
+
+    render(<App />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "消息检索" }));
+    await user.click(await screen.findByRole("button", { name: "加载更多" }));
+
+    expect(await screen.findByText("消息加载失败", { selector: ".inline-error strong" })).toBeInTheDocument();
+    expect(screen.getByText(/数据库繁忙/, { selector: ".inline-error p" })).toBeInTheDocument();
+    expect(screen.getByText("已加载消息")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "加载更多" })).toBeEnabled();
+  });
+
+  it("returns to the login screen when the message feed answers 401", async () => {
+    installBaseFetch(() => json({ detail: "session expired" }, 401));
+
+    render(<App />);
+
+    expect(await screen.findByLabelText("管理密钥")).toBeInTheDocument();
+  });
+
+  it("keeps the previous messages on screen while the next filters are loading", async () => {
+    let resolveNext!: (response: Response) => void;
+    const nextResponse = new Promise<Response>((resolve) => { resolveNext = resolve; });
+    installBaseFetch((url) => {
+      if (url.searchParams.get("query") === "新条件") return nextResponse;
+      return json({ items: [message(1, "旧条件结果")], has_more: false, next_cursor: null, total: null });
+    });
+
+    render(<App />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "消息检索" }));
+    expect(await screen.findByText("旧条件结果")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("关键词"), "新条件");
+    await user.click(screen.getByRole("button", { name: "应用筛选" }));
+
+    expect(await screen.findByText("正在同步…")).toBeInTheDocument();
+    expect(screen.getByText("旧条件结果")).toBeInTheDocument();
+
+    resolveNext(await json({ items: [message(2, "新条件结果")], has_more: false, next_cursor: null, total: null }));
+    expect(await screen.findByText("新条件结果")).toBeInTheDocument();
+    expect(screen.queryByText("旧条件结果")).not.toBeInTheDocument();
+  });
+
+  it("applying the same filters again reloads the messages without adding a history entry", async () => {
+    let messageCalls = 0;
+    installBaseFetch(() => {
+      messageCalls += 1;
+      return json({ items: [message(1, "消息一")], has_more: false, next_cursor: null, total: null });
+    });
+
+    render(<App />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "消息检索" }));
+    await screen.findByText("消息一");
+    await user.type(screen.getByLabelText("关键词"), "漏洞");
+    await user.click(screen.getByRole("button", { name: "应用筛选" }));
+    await waitFor(() => expect(messageCalls).toBe(2));
+    const entries = window.history.length;
+
+    await user.click(screen.getByRole("button", { name: "应用筛选" }));
+
+    await waitFor(() => expect(messageCalls).toBe(3));
+    expect(window.history.length).toBe(entries);
+    expect(window.location.search).toBe("?view=messages&query=%E6%BC%8F%E6%B4%9E");
+  });
 });

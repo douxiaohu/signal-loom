@@ -1,183 +1,112 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RadioTower, RefreshCw, Search, Terminal, Zap } from "lucide-react";
 
 import { fetchPublicMessages, fetchPublicSources } from "./public-api";
 import MessageFeed from "./components/MessageFeed";
 import PublicSourceList from "./components/PublicSourceList";
+import { useMessageFeed, type FeedFetcher } from "./hooks/useMessageFeed";
+import { useUrlFilters } from "./hooks/useUrlFilters";
+import { ApiError } from "./lib/http";
+import { filtersToParams, parseFilters, withSearch } from "./lib/filters";
 import { ThemeSwitcher } from "./theme";
-import type { Filters, Message, MessagePage, PublicSource, MediaFilter } from "./types";
-import { isMediaFilter, mediaOptions } from "./utils";
+import type { Filters, MediaFilter, PublicSource } from "./types";
+import { mediaOptions } from "./utils";
 
 const publicMediaOptions = mediaOptions.filter((option) =>
   ["all", "photo", "video", "document"].includes(option.value)
 );
 
 const PAGE_LIMIT = 20;
-const CACHE_TTL_MS = 60_000;
-const CACHE_LIMIT = 20;
+const FEED_CACHE = { ttlMs: 60_000, limit: 20 };
 
-function filterKey(filters: Filters) {
-  return `${filters.chatId}|${filters.media}|${filters.query.trim()}`;
-}
+const filtersFromUrl = () => parseFilters(window.location.search);
+const filtersToUrl = (filters: Filters) => withSearch("/", filtersToParams(filters));
 
-function filtersFromUrl(): Filters {
-  const params = new URLSearchParams(window.location.search);
-  const media = params.get("media") || "all";
-  return {
-    chatId: params.get("chat_id") || "all",
-    media: isMediaFilter(media) ? media : "all",
-    query: params.get("query") || "",
-  };
-}
+const fetchPage: FeedFetcher = ({ filters, cursor, signal }) =>
+  fetchPublicMessages(filters, { limit: PAGE_LIMIT, cursor, signal });
 
-function filtersToUrl(filters: Filters) {
-  const params = new URLSearchParams();
-  if (filters.chatId !== "all") params.set("chat_id", filters.chatId);
-  if (filters.media !== "all") params.set("media", filters.media);
-  if (filters.query) params.set("query", filters.query);
-  const search = params.toString();
-  return search ? `/?${search}` : "/";
-}
+const feedErrorText = (caught: unknown) => (caught instanceof Error ? caught.message : "消息加载失败");
 
 export default function PublicApp() {
   const initial = useMemo(filtersFromUrl, []);
   const [sources, setSources] = useState<PublicSource[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [filters, setFilters] = useState<Filters>(initial);
+  const [sourcesError, setSourcesError] = useState("");
+  const [sourcesToken, setSourcesToken] = useState(0);
+  const [fallbackNotice, setFallbackNotice] = useState("");
   const [draftQuery, setDraftQuery] = useState(initial.query);
   const [draftMedia, setDraftMedia] = useState(initial.media);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [hasMore, setHasMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState("");
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const requestSequence = useRef(0);
-  const pageCache = useRef(new Map<string, { page: MessagePage; storedAt: number }>());
 
-  const loadSources = useCallback((signal?: AbortSignal) => {
-    fetchPublicSources(signal)
-      .then(setSources)
-      .catch((caught) => {
-        if (!signal?.aborted) {
-          setError(caught instanceof Error ? caught.message : "来源加载失败");
-        }
-      });
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    loadSources(controller.signal);
-    return () => controller.abort();
-  }, [loadSources]);
-
-  useEffect(() => {
-    const sequence = ++requestSequence.current;
-    const controller = new AbortController();
-    const key = filterKey(filters);
-    const cached = pageCache.current.get(key);
-
-    if (cached && Date.now() - cached.storedAt < CACHE_TTL_MS) {
-      setMessages(cached.page.items);
-      setHasMore(cached.page.has_more);
-      setNextCursor(cached.page.next_cursor || "");
-    } else {
-      if (cached) pageCache.current.delete(key);
-      setMessages([]);
-      setHasMore(false);
-      setNextCursor("");
-    }
-    setLoading(true);
-    setError("");
-
-    fetchPublicMessages(filters, { limit: PAGE_LIMIT, signal: controller.signal })
-      .then((page) => {
-        if (controller.signal.aborted || sequence !== requestSequence.current) return;
-        setMessages(page.items);
-        setHasMore(page.has_more);
-        setNextCursor(page.next_cursor || "");
-        pageCache.current.delete(key);
-        pageCache.current.set(key, { page, storedAt: Date.now() });
-        while (pageCache.current.size > CACHE_LIMIT) {
-          const oldestKey = pageCache.current.keys().next().value as string | undefined;
-          if (!oldestKey) break;
-          pageCache.current.delete(oldestKey);
-        }
-      })
-      .catch((caught) => {
-        if (!controller.signal.aborted && sequence === requestSequence.current) {
-          setError(caught instanceof Error ? caught.message : "消息加载失败");
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted && sequence === requestSequence.current) {
-          setLoading(false);
-          setIsRefreshing(false);
-        }
-      });
-    return () => controller.abort();
-  }, [filters]);
-
-  useEffect(() => {
-    function restoreFilters() {
-      const next = filtersFromUrl();
-      setFilters(next);
+  const { filters, commit } = useUrlFilters({
+    read: filtersFromUrl,
+    toUrl: filtersToUrl,
+    onRestore: (next) => {
       setDraftQuery(next.query);
       setDraftMedia(next.media);
+      setFallbackNotice("");
     }
-    window.addEventListener("popstate", restoreFilters);
-    return () => window.removeEventListener("popstate", restoreFilters);
-  }, []);
+  });
 
-  const commitFilters = useCallback((next: Filters) => {
-    const url = filtersToUrl(next);
-    if (`${window.location.pathname}${window.location.search}` !== url) {
-      window.history.pushState(null, "", url);
+  const feed = useMessageFeed({
+    filters,
+    fetchPage,
+    cache: FEED_CACHE,
+    formatError: feedErrorText,
+    onError: (caught) => {
+      // A bookmarked source that no longer exists (or was made private) answers 404 forever.
+      if (caught instanceof ApiError && caught.status === 404 && filters.chatId !== "all") {
+        setFallbackNotice("所选来源不存在或未公开，已切换到全部公开来源");
+        commit({ ...filters, chatId: "all" }, { replace: true });
+      }
     }
-    setFilters(next);
-  }, []);
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchPublicSources(controller.signal)
+      .then((items) => {
+        setSources(items);
+        setSourcesError("");
+      })
+      .catch((caught) => {
+        if (!controller.signal.aborted) {
+          setSourcesError(caught instanceof Error ? caught.message : "来源加载失败");
+        }
+      });
+    return () => controller.abort();
+  }, [sourcesToken]);
+
+  /** Shows `next`; asking again for the list that is already shown just refreshes it. */
+  function apply(next: Filters) {
+    setFallbackNotice("");
+    if (!commit(next)) feed.revalidate();
+  }
 
   function submitSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    commitFilters({ ...filters, query: draftQuery.trim(), media: draftMedia });
+    apply({ ...filters, query: draftQuery.trim(), media: draftMedia });
   }
 
   function selectSource(chatId: string) {
-    commitFilters({ ...filters, chatId });
+    apply({ ...filters, chatId });
   }
 
   function selectMedia(media: MediaFilter) {
     setDraftMedia(media);
-    commitFilters({ ...filters, media });
+    apply({ ...filters, media });
   }
 
   function clearSearch() {
     setDraftQuery("");
-    commitFilters({ ...filters, query: "" });
+    apply({ ...filters, query: "" });
   }
 
   function handleManualRefresh() {
-    setIsRefreshing(true);
-    pageCache.current.clear();
-    loadSources();
-    commitFilters({ ...filters });
+    setFallbackNotice("");
+    setSourcesToken((value) => value + 1);
+    feed.reload();
   }
 
-  async function loadMore() {
-    if (!nextCursor || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const page = await fetchPublicMessages(filters, { limit: PAGE_LIMIT, cursor: nextCursor });
-      setMessages((current) => [
-        ...current,
-        ...page.items.filter((item) => !current.some((existing) => existing.id === item.id)),
-      ]);
-      setHasMore(page.has_more);
-      setNextCursor(page.next_cursor || "");
-    } finally {
-      setLoadingMore(false);
-    }
-  }
+  const notice = fallbackNotice || feed.error || sourcesError;
 
   const activeSource =
     filters.chatId === "all"
@@ -243,7 +172,7 @@ export default function PublicApp() {
               onClick={handleManualRefresh}
               title="刷新资讯"
               aria-label="刷新资讯"
-              className={`pub-icon-button ${isRefreshing ? "is-busy" : ""}`}
+              className={`pub-icon-button ${feed.refreshing ? "is-busy" : ""}`}
             >
               <RefreshCw aria-hidden="true" />
             </button>
@@ -283,32 +212,36 @@ export default function PublicApp() {
               <RadioTower size={14} aria-hidden="true" />
               <span className="pub-toolbar-source" title={activeSource}>{activeSource}</span>
               <span className="pub-toolbar-dot" aria-hidden="true">·</span>
-              <span>{messages.length} 条</span>
-              {loading && (
+              <span>{feed.messages.length} 条</span>
+              {feed.loading && (
                 <span className="public-loading pub-live">正在更新…</span>
               )}
             </div>
           </div>
 
-          {loading && !messages.length ? (
+          {feed.loading && !feed.messages.length ? (
             <span className="sr-only" role="status" aria-label={`正在加载${activeSource}消息`}>
               正在加载{activeSource}消息
             </span>
           ) : null}
 
-          {error && (
+          {notice && (
             <div className="pub-notice" role="alert">
-              <span>{error}</span>
-              <button type="button" onClick={handleManualRefresh}>重试</button>
+              <span>{notice}</span>
+              {fallbackNotice ? (
+                <button type="button" onClick={() => setFallbackNotice("")}>知道了</button>
+              ) : (
+                <button type="button" onClick={handleManualRefresh}>重试</button>
+              )}
             </div>
           )}
 
           <MessageFeed
-            messages={messages}
-            hasMore={hasMore}
-            initialLoading={loading}
-            loadingMore={loadingMore}
-            onLoadMore={() => void loadMore()}
+            messages={feed.messages}
+            hasMore={feed.hasMore}
+            initialLoading={feed.loading}
+            loadingMore={feed.loadingMore}
+            onLoadMore={() => void feed.loadMore()}
             groupDuplicates
           />
         </div>

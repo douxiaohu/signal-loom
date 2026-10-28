@@ -30,11 +30,20 @@ import FilterPanel from "./components/FilterPanel";
 import LoginScreen from "./components/LoginScreen";
 import MessageFeed from "./components/MessageFeed";
 import OperationsRail from "./components/OperationsRail";
-import type { AdminOverview as Overview, AdminView, AlertMatch, AlertRule, Filters, Group, Message, OperationSummary, VisitRecord, VisitStats } from "./types";
-import { errorHelp, errorMessage, fullDateFormatter, isMediaFilter, mediaLabel } from "./utils";
+import { useMessageFeed, type FeedFetcher } from "./hooks/useMessageFeed";
+import { useNewMessageWatcher } from "./hooks/useNewMessageWatcher";
+import { usePolling } from "./hooks/usePolling";
+import { useUrlFilters } from "./hooks/useUrlFilters";
+import { filtersToParams, parseFilters, withSearch } from "./lib/filters";
+import type { AdminOverview as Overview, AdminView, AlertMatch, AlertRule, Filters, Group, OperationSummary, VisitRecord, VisitStats } from "./types";
+import { errorHelp, errorMessage, fullDateFormatter, mediaLabel } from "./utils";
 
 const PAGE_LIMIT = 30;
 const EMPTY_OPERATIONS: OperationSummary = { sources: [], unhealthy_sources: [] };
+
+const fetchPage: FeedFetcher = ({ filters, cursor, signal }) => fetchMessages(filters, { cursor, limit: PAGE_LIMIT, signal });
+const fetchLatestPage = (filters: Filters) => fetchMessages(filters, { limit: PAGE_LIMIT });
+const feedErrorText = (caught: unknown) => errorHelp(errorMessage(caught));
 
 export default function App() {
   const initial = useMemo(readFiltersFromUrl, []);
@@ -42,41 +51,23 @@ export default function App() {
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [operations, setOperations] = useState<OperationSummary>(EMPTY_OPERATIONS);
   const [alerts, setAlerts] = useState<AlertMatch[]>([]);
   const [rules, setRules] = useState<AlertRule[]>([]);
-  const [filters, setFilters] = useState<Filters>(initial);
   const [draft, setDraft] = useState<Filters>(initial);
-  const [hasMore, setHasMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState("");
-  const [initialLoading, setInitialLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [pendingNew, setPendingNew] = useState<Message[]>([]);
   const [sourceError, setSourceError] = useState("");
-  const [messageError, setMessageError] = useState("");
   const [operationsError, setOperationsError] = useState("");
   const [logoutError, setLogoutError] = useState("");
   const [operationAnnouncement, setOperationAnnouncement] = useState("");
   const [operationFocusRequest, setOperationFocusRequest] = useState<{ targetId: string; sequence: number } | null>(null);
-  const [lastMessageLoad, setLastMessageLoad] = useState("");
-  const [messageRefreshKey, setMessageRefreshKey] = useState(0);
   const [view, setView] = useState<AdminView>(readViewFromUrl);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [visits, setVisits] = useState<VisitRecord[]>([]);
   const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
 
-  const requestSequence = useRef(0);
-  const messageController = useRef<AbortController | null>(null);
-  const pageController = useRef<AbortController | null>(null);
-  const loadingMoreRef = useRef(false);
-  const filtersRef = useRef(filters);
-  const messagesRef = useRef(messages);
   const filterReturnFocus = useRef<HTMLElement | null>(null);
   const operationFocusSequence = useRef(0);
-  useEffect(() => { filtersRef.current = filters; }, [filters]);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   useEffect(() => {
     if (!operationFocusRequest) return;
@@ -94,6 +85,36 @@ export default function App() {
   const handleUnauthorized = useCallback((caught: unknown) => {
     if (caught instanceof ApiError && caught.status === 401) setAuthenticated(false);
   }, []);
+
+  const { filters, commit } = useUrlFilters({
+    read: readFiltersFromUrl,
+    toUrl: filtersToUrl,
+    onRestore: (next) => {
+      setDraft(next);
+      setView(readViewFromUrl());
+    }
+  });
+
+  const feed = useMessageFeed({
+    filters,
+    enabled: authenticated === true,
+    keepPrevious: true,
+    fetchPage,
+    formatError: feedErrorText,
+    onError: handleUnauthorized
+  });
+
+  const newMessages = useNewMessageWatcher({
+    enabled: authenticated === true,
+    filters,
+    messages: feed.messages,
+    generation: feed.generation,
+    fetchPage: fetchLatestPage,
+    formatError: feedErrorText,
+    onError: handleUnauthorized
+  });
+
+  const messageError = feed.error || newMessages.error;
 
   const loadSources = useCallback(async () => {
     setSourceError("");
@@ -125,48 +146,6 @@ export default function App() {
 
   useEffect(() => {
     if (!authenticated) return;
-    const sequence = ++requestSequence.current;
-    messageController.current?.abort();
-    pageController.current?.abort();
-    const controller = new AbortController();
-    messageController.current = controller;
-    loadingMoreRef.current = false;
-    setLoadingMore(false);
-    setInitialLoading(true);
-    setMessageError("");
-    setPendingNew([]);
-    fetchMessages(filters, { limit: PAGE_LIMIT, signal: controller.signal })
-      .then((page) => {
-        if (sequence !== requestSequence.current || controller.signal.aborted) return;
-        setMessages(dedupeMessages(page.items));
-        setHasMore(page.has_more);
-        setNextCursor(page.next_cursor || "");
-        setLastMessageLoad(fullDateFormatter.format(new Date()));
-      })
-      .catch((caught) => {
-        if (controller.signal.aborted) return;
-        handleUnauthorized(caught);
-        if (sequence === requestSequence.current) setMessageError(errorHelp(errorMessage(caught)));
-      })
-      .finally(() => {
-        if (sequence === requestSequence.current) setInitialLoading(false);
-      });
-    return () => controller.abort();
-  }, [authenticated, filters, handleUnauthorized, messageRefreshKey]);
-
-  useEffect(() => {
-    function restoreFilters() {
-      const next = readFiltersFromUrl();
-      setDraft(next);
-      setFilters(next);
-      setView(readViewFromUrl());
-    }
-    window.addEventListener("popstate", restoreFilters);
-    return () => window.removeEventListener("popstate", restoreFilters);
-  }, []);
-
-  useEffect(() => {
-    if (!authenticated) return;
     if (view === "visits") {
       fetchVisits().then((payload) => {
         setVisits(payload.items);
@@ -184,37 +163,10 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [filtersOpen]);
 
-  useEffect(() => {
-    if (!authenticated) return;
-    const refreshHealth = () => {
-      if (document.visibilityState === "hidden") return;
-      void loadSources();
-      void loadOperations();
-    };
-    const timer = window.setInterval(refreshHealth, 30_000);
-    return () => window.clearInterval(timer);
-  }, [authenticated, loadOperations, loadSources]);
-
-  const checkForNewMessages = useCallback(async () => {
-    if (!authenticated || document.visibilityState === "hidden") return;
-    const snapshot = filtersRef.current;
-    const key = filterKey(snapshot);
-    try {
-      const page = await fetchMessages(snapshot, { limit: PAGE_LIMIT });
-      if (key !== filterKey(filtersRef.current)) return;
-      const visibleIds = new Set(messagesRef.current.map((message) => message.id));
-      setPendingNew((current) => dedupeMessages([...page.items.filter((item) => !visibleIds.has(item.id)), ...current]));
-    } catch (caught) {
-      handleUnauthorized(caught);
-      setMessageError(errorHelp(errorMessage(caught)));
-    }
-  }, [authenticated, handleUnauthorized]);
-
-  useEffect(() => {
-    if (!authenticated) return;
-    const timer = window.setInterval(() => void checkForNewMessages(), 60_000);
-    return () => window.clearInterval(timer);
-  }, [authenticated, checkForNewMessages]);
+  usePolling(() => {
+    void loadSources();
+    void loadOperations();
+  }, 30_000, authenticated === true);
 
   async function handleLogin(apiKey: string) {
     setLoginLoading(true);
@@ -238,7 +190,6 @@ export default function App() {
     try {
       await logout();
       setAuthenticated(false);
-      setMessages([]);
       setGroups([]);
     } catch (caught) {
       setLogoutError(`退出失败，当前会话仍保持有效。${errorHelp(errorMessage(caught))}`);
@@ -247,39 +198,10 @@ export default function App() {
 
   function commitFilters() {
     const next = { ...draft, query: draft.query.trim() };
-    const url = filtersToUrl(next);
-    if (url !== `${window.location.pathname}${window.location.search}`) window.history.pushState(null, "", url);
-    setFilters(next);
+    const changed = commit(next);
     setDraft(next);
     closeFilters();
-    if (filterKey(next) === filterKey(filters)) setMessageRefreshKey((value) => value + 1);
-  }
-
-  async function loadMore() {
-    const cursor = nextCursor;
-    if (!cursor || !hasMore || loadingMoreRef.current) return;
-    loadingMoreRef.current = true;
-    setLoadingMore(true);
-    setMessageError("");
-    pageController.current?.abort();
-    const controller = new AbortController();
-    pageController.current = controller;
-    const snapshot = filters;
-    try {
-      const page = await fetchMessages(snapshot, { cursor, limit: PAGE_LIMIT, signal: controller.signal });
-      if (filterKey(snapshot) !== filterKey(filtersRef.current)) return;
-      setMessages((current) => dedupeMessages([...current, ...page.items]));
-      setHasMore(page.has_more);
-      setNextCursor(page.next_cursor || "");
-    } catch (caught) {
-      if (!controller.signal.aborted) {
-        handleUnauthorized(caught);
-        setMessageError(errorHelp(errorMessage(caught)));
-      }
-    } finally {
-      loadingMoreRef.current = false;
-      setLoadingMore(false);
-    }
+    if (!changed) feed.revalidate();
   }
 
   async function mutateOperations(
@@ -317,7 +239,7 @@ export default function App() {
   if (!authenticated) return <LoginScreen error={loginError} loading={loginLoading} onLogin={handleLogin} />;
 
   const activeSource = filters.chatId === "all" ? "全部来源" : groups.find((group) => String(group.chat_id) === filters.chatId)?.name || "当前来源";
-  const liveMessage = logoutError || operationsError || operationAnnouncement || messageError || sourceError || (pendingNew.length ? `发现 ${pendingNew.length} 条新消息` : `当前显示 ${messages.length} 条消息`);
+  const liveMessage = logoutError || operationsError || operationAnnouncement || messageError || sourceError || (newMessages.pending.length ? `发现 ${newMessages.pending.length} 条新消息` : `当前显示 ${feed.messages.length} 条消息`);
   const rail = (
     <OperationsRail
       alerts={alerts}
@@ -366,14 +288,14 @@ export default function App() {
                   <div><p className="section-kicker">消息检索</p><h2>{activeSource}</h2><p>{mediaLabel(filters.media)}{filters.query ? ` · “${filters.query}”` : ""}</p></div>
                   <Button variant="outline" size="sm" className="filters-toggle" type="button" onClick={openFilters}><SlidersHorizontal size={16} aria-hidden="true" />筛选</Button>
                 </header>
-                {messageError ? <InlineError title="消息加载失败" message={messageError} onRetry={() => setMessageRefreshKey((value) => value + 1)} /> : null}
-                {pendingNew.length ? (
-                  <button className="new-message-button" type="button" onClick={() => { setMessages((current) => dedupeMessages([...pendingNew, ...current])); setPendingNew([]); }}>
-                    {pendingNew.length} 条新消息，点击显示
+                {messageError ? <InlineError title="消息加载失败" message={messageError} onRetry={feed.revalidate} /> : null}
+                {newMessages.pending.length ? (
+                  <button className="new-message-button" type="button" onClick={() => { feed.prepend(newMessages.pending); newMessages.clear(); }}>
+                    {newMessages.pending.length} 条新消息，点击显示
                   </button>
                 ) : null}
-                <div className="feed-status"><span>{initialLoading ? "正在同步…" : `${messages.length} 条消息`}</span><span>{lastMessageLoad ? `更新于 ${lastMessageLoad}` : "等待首次同步"}</span></div>
-                <MessageFeed density="console" hasMore={hasMore} initialLoading={initialLoading} loadingMore={loadingMore} messages={messages} onLoadMore={() => void loadMore()} />
+                <div className="feed-status"><span>{feed.loading ? "正在同步…" : `${feed.messages.length} 条消息`}</span><span>{feed.lastLoadedAt ? `更新于 ${fullDateFormatter.format(feed.lastLoadedAt)}` : "等待首次同步"}</span></div>
+                <MessageFeed density="console" hasMore={feed.hasMore} initialLoading={feed.loading} loadingMore={feed.loadingMore} messages={feed.messages} onLoadMore={() => void feed.loadMore()} />
               </section>
             </div>
           ) : null}
@@ -394,21 +316,11 @@ function readViewFromUrl(): AdminView {
 }
 
 function readFiltersFromUrl(): Filters {
-  const params = new URLSearchParams(window.location.search);
-  const media = params.get("media") || "all";
-  return { chatId: params.get("chat_id") || "all", media: isMediaFilter(media) ? media : "all", query: params.get("query") || "" };
+  return parseFilters(window.location.search);
 }
 
+/** Filters go into the URL next to whichever view is open. */
 function filtersToUrl(filters: Filters) {
-  const params = new URLSearchParams();
   const view = new URLSearchParams(window.location.search).get("view");
-  if (view) params.set("view", view);
-  if (filters.chatId !== "all") params.set("chat_id", filters.chatId);
-  if (filters.media !== "all") params.set("media", filters.media);
-  if (filters.query) params.set("query", filters.query);
-  const search = params.toString();
-  return `${window.location.pathname}${search ? `?${search}` : ""}`;
+  return withSearch(window.location.pathname, filtersToParams(filters, { view }));
 }
-
-function filterKey(filters: Filters) { return `${filters.chatId}\u0000${filters.media}\u0000${filters.query.trim()}`; }
-function dedupeMessages(items: Message[]) { return [...new Map(items.map((item) => [item.id, item])).values()]; }
