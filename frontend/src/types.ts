@@ -63,10 +63,22 @@ export type MessagePage = {
   total: number | null;
 };
 
+/**
+ * What /api/admin/operations/summary knows about a source beyond its health:
+ * how many of the latest runs failed in a row and how many messages the latest run saved.
+ */
+export type SourceAnomalyStats = {
+  consecutive_failures: number;
+  new_message_volume: number;
+};
+
+/** A source as listed by /api/admin/sources, plus its anomaly stats once the summary has loaded. */
+export type ManagedSource = Group & Partial<SourceAnomalyStats>;
+
 export type OperationSummary = {
   generated_at?: string;
-  sources: Array<SourceHealth & { name?: string }>;
-  unhealthy_sources: Array<SourceHealth & { name?: string }>;
+  sources: Array<SourceHealth & Partial<SourceAnomalyStats> & { name?: string }>;
+  unhealthy_sources: Array<SourceHealth & Partial<SourceAnomalyStats> & { name?: string }>;
   public_source_count?: number;
   source_count?: number;
 };

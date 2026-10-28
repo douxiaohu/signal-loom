@@ -1,3 +1,5 @@
+import { vi } from "vitest";
+
 import type { Message, MessagePage } from "../../src/types";
 
 export function message(id: number, content = `message ${id}`): Message {
@@ -42,3 +44,45 @@ export function abortable<T>(signal: AbortSignal, work: Promise<T>): Promise<T> 
     work.then(resolve, reject);
   });
 }
+
+export function json(value: unknown, status = 200) {
+  return Promise.resolve(new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } }));
+}
+
+/** Replaces fetch with a route function; returning undefined means "no such route". */
+export function stubFetch(route: (url: URL, init?: RequestInit) => Promise<Response> | undefined) {
+  const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(String(input), window.location.origin);
+    const response = route(url, init);
+    if (!response) throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url.pathname}`);
+    return response;
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+export function callsTo(fetchMock: ReturnType<typeof stubFetch>, pathname: string) {
+  return fetchMock.mock.calls.filter(([input]) => new URL(String(input), window.location.origin).pathname === pathname).length;
+}
+
+export function source(chatId: number, name: string, extra: Record<string, unknown> = {}) {
+  return {
+    chat_id: chatId,
+    name,
+    source_url: `https://t.me/s${Math.abs(chatId)}`,
+    source_type: "public",
+    enabled: true,
+    public_visible: true,
+    message_count: 1,
+    last_message_time: null,
+    health_status: "healthy",
+    last_run_at: null,
+    last_success_at: null,
+    last_error: null,
+    fetched_count: 0,
+    saved_count: 0,
+    ...extra
+  };
+}
+
+export const EMPTY_STATS = { total: 0, unique_ips: 0, today: 0, today_unique: 0, last_24h: 0, last_7d_unique: 0 };

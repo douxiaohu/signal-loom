@@ -313,6 +313,7 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByLabelText("管理密钥")).toBeInTheDocument();
+    expect(screen.getByText("登录已失效，请重新输入管理密钥。")).toBeInTheDocument();
   });
 
   it("keeps the previous messages on screen while the next filters are loading", async () => {
@@ -359,5 +360,95 @@ describe("App", () => {
     await waitFor(() => expect(messageCalls).toBe(3));
     expect(window.history.length).toBe(entries);
     expect(window.location.search).toBe("?view=messages&query=%E6%BC%8F%E6%B4%9E");
+  });
+
+  it("flags failing sources from the operations summary and filters them", async () => {
+    window.history.replaceState(null, "", "/?view=sources");
+    const failing = { ...group, chat_id: -1, name: "反复失败的来源", health_status: "error", last_error: "超时" };
+    const fine = { ...group, chat_id: -2, name: "一切正常的来源" };
+    installBaseFetch(
+      () => json({ items: [], has_more: false, next_cursor: null, total: null }),
+      (url) => {
+        if (url.pathname === "/api/admin/sources") return json({ items: [failing, fine] });
+        if (url.pathname === "/api/admin/operations/summary") {
+          return json({
+            sources: [
+              { ...failing, consecutive_failures: 3, new_message_volume: 0 },
+              { ...fine, consecutive_failures: 0, new_message_volume: 7 }
+            ],
+            unhealthy_sources: [failing]
+          });
+        }
+        return undefined;
+      }
+    );
+
+    render(<App />);
+    const user = userEvent.setup();
+    expect(await screen.findByText(/连续失败 3 · 新增 0/)).toBeInTheDocument();
+    expect(screen.getByText(/连续失败 0 · 新增 7/)).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("来源异常筛选"), "failures");
+
+    expect(screen.getByText("反复失败的来源")).toBeInTheDocument();
+    expect(screen.queryByText("一切正常的来源")).not.toBeInTheDocument();
+  });
+
+  it("shows a running crawl as busy, announces it and does not start a second one", async () => {
+    window.history.replaceState(null, "", "/?view=sources");
+    let resolveCrawl!: (response: Response) => void;
+    const crawlResponse = new Promise<Response>((resolve) => { resolveCrawl = resolve; });
+    let crawlCalls = 0;
+    installBaseFetch(
+      () => json({ items: [], has_more: false, next_cursor: null, total: null }),
+      (url) => {
+        if (url.pathname === `/api/admin/sources/${group.chat_id}/crawl-now`) {
+          crawlCalls += 1;
+          return crawlResponse;
+        }
+        return undefined;
+      }
+    );
+
+    render(<App />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "采集" }));
+
+    const busyButton = await screen.findByRole("button", { name: "采集中…" });
+    expect(busyButton).toBeDisabled();
+    await user.click(busyButton);
+    expect(crawlCalls).toBe(1);
+    expect(screen.getByText("正在采集来源，最长约需 90 秒", { selector: ".single-live-region" })).toBeInTheDocument();
+
+    resolveCrawl(await json({ ok: true }));
+    expect(await screen.findByText("已完成一次来源采集", { selector: ".single-live-region" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "采集" })).toBeEnabled();
+  });
+
+  it("explains why the visit log failed to load and retries in place", async () => {
+    window.history.replaceState(null, "", "/?view=visits");
+    let visitCalls = 0;
+    installBaseFetch(
+      () => json({ items: [], has_more: false, next_cursor: null, total: null }),
+      (url) => {
+        if (url.pathname !== "/api/admin/visits") return undefined;
+        visitCalls += 1;
+        if (visitCalls === 1) return json({ detail: "数据库繁忙" }, 503);
+        return json({
+          items: [{ id: 1, visited_at: "2026-07-14T08:00:00+00:00", ip: "203.0.113.7", path: "/", method: "GET", user_agent: "", referer: "" }],
+          stats: { total: 1, unique_ips: 1, today: 1, today_unique: 1, last_24h: 1, last_7d_unique: 1 }
+        });
+      }
+    );
+
+    render(<App />);
+    const user = userEvent.setup();
+    expect(await screen.findByText("访问记录加载失败", { selector: ".inline-error strong" })).toBeInTheDocument();
+    expect(screen.getByText(/数据库繁忙/, { selector: ".inline-error p" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "就地重试" }));
+
+    expect(await screen.findByText("203.0.113.7")).toBeInTheDocument();
+    expect(screen.queryByText("访问记录加载失败")).not.toBeInTheDocument();
   });
 });

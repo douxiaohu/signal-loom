@@ -6,10 +6,12 @@ import { formatCount, formatDate } from "../utils";
 
 export default function AdminVisits({
   items,
-  stats
+  stats,
+  loading = false
 }: {
   items: VisitRecord[];
   stats: VisitStats | null;
+  loading?: boolean;
 }) {
   return (
     <div className="admin-stack">
@@ -50,7 +52,7 @@ export default function AdminVisits({
               ))}
             </tbody>
           </table>
-        ) : <p className="empty-copy">还没有访问记录</p>}
+        ) : <p className="empty-copy">{loading ? "正在加载访问记录…" : "还没有访问记录"}</p>}
       </SpotlightCard>
     </div>
   );

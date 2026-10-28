@@ -2,13 +2,18 @@ import { FormEvent, useState } from "react";
 import { Check, Eye, EyeOff, Pause, Play, Radar, ShieldAlert } from "lucide-react";
 
 import SpotlightCard from "../bits/SpotlightCard";
-import type { AlertMatch, AlertRule, Group } from "../types";
+import { operationKey } from "../hooks/useOperationsActions";
+import type { AlertMatch, AlertRule, Group, ManagedSource } from "../types";
 import { formatCount, formatDate } from "../utils";
+
+type Anomaly = "all" | "failures" | "volume";
 
 type OperationsRailProps = {
   alerts: AlertMatch[];
-  groups: Group[];
+  groups: ManagedSource[];
   rules: AlertRule[];
+  /** Keys (see operationKey) of the actions that are running; their controls are disabled. */
+  busy?: ReadonlySet<string>;
   focus?: "all" | "sources" | "alerts";
   onAcknowledge: (id: number) => Promise<void>;
   onCreateRule: (name: string, keyword: string) => Promise<void>;
@@ -21,15 +26,16 @@ type OperationsRailProps = {
 
 export default function OperationsRail(props: OperationsRailProps) {
   const focus = props.focus || "all";
-  const [anomaly, setAnomaly] = useState<"all" | "failures" | "volume">("all");
-  const visibleGroups = props.groups.filter((group) => { const health = group as Group & { consecutive_failures?: number; new_message_volume?: number }; return anomaly === "all" || (anomaly === "failures" ? (health.consecutive_failures || 0) > 0 : (health.new_message_volume || 0) === 0); });
+  const [anomaly, setAnomaly] = useState<Anomaly>("all");
+  const isBusy = (key: string) => props.busy?.has(key) ?? false;
+  const visibleGroups = props.groups.filter((group) => matchesAnomaly(group, anomaly));
   const unhealthy = visibleGroups.filter((group) => group.health_status !== "healthy");
   const newAlerts = props.alerts.filter((alert) => alert.status === "new");
   return (
     <aside className="operations-rail admin-stack" aria-label="来源健康与监测规则">
       {focus !== "alerts" ? <SpotlightCard as="section" id="source-operations" className="ops-card" tabIndex={-1} aria-labelledby="source-operations-title">
         <header><div><p className="section-kicker">运行</p><h2 id="source-operations-title">来源管理</h2></div><strong className={unhealthy.length ? "count-warn" : "count-ok"}>{unhealthy.length ? formatCount(unhealthy.length) : "正常"}</strong></header>
-        <label>异常筛选 <select aria-label="来源异常筛选" value={anomaly} onChange={(event) => setAnomaly(event.target.value as typeof anomaly)}><option value="all">全部来源</option><option value="failures">连续失败</option><option value="volume">无新增消息</option></select></label>
+        <label>异常筛选 <select aria-label="来源异常筛选" value={anomaly} onChange={(event) => setAnomaly(event.target.value as Anomaly)}><option value="all">全部来源</option><option value="failures">连续失败</option><option value="volume">无新增消息</option></select></label>
         {visibleGroups.length ? (
           <table className="source-table">
             <thead>
@@ -44,20 +50,20 @@ export default function OperationsRail(props: OperationsRailProps) {
                 <tr key={group.chat_id}>
                   <td>
                     <strong>{group.name}</strong>
-                    <small>{healthCopy(group)} · 连续失败 {(group as Group & { consecutive_failures?: number }).consecutive_failures || 0} · 新增 {(group as Group & { new_message_volume?: number }).new_message_volume || 0}</small>
+                    <small>{healthCopy(group)}{anomalyCopy(group)}</small>
                   </td>
                   <td>
                     <small>{group.enabled === false ? "已停用" : "采集中"} · {group.public_visible ? "公开" : "私有"}</small>
                   </td>
                   <td>
                     <div className="source-table-actions">
-                      <button type="button" onClick={() => void props.onPatchSource(group, { public_visible: !group.public_visible })}>
+                      <button type="button" disabled={isBusy(operationKey.source(group.chat_id))} onClick={() => void props.onPatchSource(group, { public_visible: !group.public_visible })}>
                         {group.public_visible ? <EyeOff size={14} aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />}{group.public_visible ? "私有" : "公开"}
                       </button>
-                      <button type="button" onClick={() => void props.onPatchSource(group, { enabled: group.enabled === false })}>
+                      <button type="button" disabled={isBusy(operationKey.source(group.chat_id))} onClick={() => void props.onPatchSource(group, { enabled: group.enabled === false })}>
                         {group.enabled === false ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}{group.enabled === false ? "启用" : "停用"}
                       </button>
-                      <button type="button" disabled={group.enabled === false} onClick={() => void props.onCrawlSource(group.chat_id)}><Radar size={14} aria-hidden="true" />采集</button>
+                      <button type="button" disabled={group.enabled === false || isBusy(operationKey.crawl(group.chat_id))} aria-busy={isBusy(operationKey.crawl(group.chat_id))} onClick={() => void props.onCrawlSource(group.chat_id)}><Radar size={14} aria-hidden="true" />{isBusy(operationKey.crawl(group.chat_id)) ? "采集中…" : "采集"}</button>
                     </div>
                   </td>
                 </tr>
@@ -76,14 +82,14 @@ export default function OperationsRail(props: OperationsRailProps) {
               <p>{alert.content || `[${alert.media_type || "消息"}]`}</p>
               <small>{alert.chat_title} · {formatDate(alert.message_time)}</small>
               {alert.status !== "resolved" ? <div className="inline-actions">
-                {alert.status === "new" ? <button type="button" onClick={() => void props.onAcknowledge(alert.id)}><Check size={14} aria-hidden="true" />确认</button> : null}
-                <button type="button" onClick={() => void props.onResolve(alert.id)}>解决</button>
+                {alert.status === "new" ? <button type="button" disabled={isBusy(operationKey.alert(alert.id))} onClick={() => void props.onAcknowledge(alert.id)}><Check size={14} aria-hidden="true" />确认</button> : null}
+                <button type="button" disabled={isBusy(operationKey.alert(alert.id))} onClick={() => void props.onResolve(alert.id)}>解决</button>
               </div> : null}
             </article>
           ))}
           {!props.alerts.length ? <p className="empty-copy">暂无规则命中</p> : null}
         </div>
-        <RuleComposer rules={props.rules} onCreate={props.onCreateRule} onToggle={props.onToggleRule} />
+        <RuleComposer rules={props.rules} isBusy={isBusy} onCreate={props.onCreateRule} onToggle={props.onToggleRule} />
       </SpotlightCard> : null}
     </aside>
   );
@@ -121,7 +127,7 @@ function SourceComposer({ onCreate }: { onCreate: (name: string, sourceUrl: stri
   );
 }
 
-function RuleComposer({ rules, onCreate, onToggle }: { rules: AlertRule[]; onCreate: (name: string, keyword: string) => Promise<void>; onToggle: (rule: AlertRule) => Promise<void> }) {
+function RuleComposer({ rules, isBusy, onCreate, onToggle }: { rules: AlertRule[]; isBusy: (key: string) => boolean; onCreate: (name: string, keyword: string) => Promise<void>; onToggle: (rule: AlertRule) => Promise<void> }) {
   const [name, setName] = useState("");
   const [keyword, setKeyword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -144,7 +150,7 @@ function RuleComposer({ rules, onCreate, onToggle }: { rules: AlertRule[]; onCre
     <details className="rule-composer">
       <summary>管理监测规则</summary>
       <div className="rule-list">
-        {rules.map((rule) => <div key={rule.id}><span><strong>{rule.name}</strong><small>关键词：{rule.keyword}</small></span><button type="button" onClick={() => void onToggle(rule)}>{rule.enabled ? "停用" : "启用"}</button></div>)}
+        {rules.map((rule) => <div key={rule.id}><span><strong>{rule.name}</strong><small>关键词：{rule.keyword}</small></span><button type="button" disabled={isBusy(operationKey.rule(rule.id))} onClick={() => void onToggle(rule)}>{rule.enabled ? "停用" : "启用"}</button></div>)}
       </div>
       <form onSubmit={submit}>
         <label htmlFor="rule-name">规则名称</label><input id="rule-name" name="name" value={name} onChange={(event) => setName(event.target.value)} required maxLength={80} autoComplete="off" />
@@ -154,6 +160,20 @@ function RuleComposer({ rules, onCreate, onToggle }: { rules: AlertRule[]; onCre
       </form>
     </details>
   );
+}
+
+/** Sources whose summary has not loaded yet are not flagged: nothing is known about them. */
+function matchesAnomaly(group: ManagedSource, anomaly: Anomaly) {
+  if (anomaly === "failures") return (group.consecutive_failures ?? 0) > 0;
+  if (anomaly === "volume") return group.new_message_volume === 0;
+  return true;
+}
+
+function anomalyCopy(group: ManagedSource) {
+  const parts: string[] = [];
+  if (group.consecutive_failures !== undefined) parts.push(`连续失败 ${group.consecutive_failures}`);
+  if (group.new_message_volume !== undefined) parts.push(`新增 ${group.new_message_volume}`);
+  return parts.map((part) => ` · ${part}`).join("");
 }
 
 function healthCopy(group: Group) {
