@@ -1,5 +1,7 @@
 import type { Filters, Message } from "../../src/types";
-import { DEFAULT_FILTERS, dedupeMessages, filterKey, filtersToParams, messagePageParams, parseFilters, withSearch } from "../../src/lib/filters";
+import { dedupeMessages, filterKey, filtersToParams, messagePageParams, parseFilters, withSearch } from "../../src/lib/filters";
+
+const DEFAULT_FILTERS: Filters = { chatId: "all", media: "all", query: "" };
 
 const filters: Filters = { chatId: "42", media: "photo", query: "安全 漏洞" };
 

@@ -17,7 +17,7 @@ export class ApiError extends Error {
   }
 }
 
-export type RequestOptions = {
+type RequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   /** Serialised as JSON; the Content-Type header is added for you. */
   body?: unknown;
@@ -27,7 +27,7 @@ export type RequestOptions = {
   timeoutMs?: number;
 };
 
-export const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 export async function request<T>(url: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, signal, timeoutMs = DEFAULT_TIMEOUT_MS } = options;

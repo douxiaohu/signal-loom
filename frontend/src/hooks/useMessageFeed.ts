@@ -7,7 +7,7 @@ import { useLatest } from "./useLatest";
 
 export type FeedFetcher = (args: { filters: Filters; cursor?: string; signal: AbortSignal }) => Promise<MessagePage>;
 
-export type FeedCacheOptions = {
+type FeedCacheOptions = {
   /** How long a first page may be shown instantly while it is re-fetched. */
   ttlMs: number;
   /** How many filter sets are remembered (oldest dropped first). */
@@ -28,7 +28,7 @@ export type UseMessageFeedOptions = {
   onError?: (caught: unknown) => void;
 };
 
-export type MessageFeed = {
+type MessageFeedState = {
   messages: Message[];
   hasMore: boolean;
   /** The first page is being fetched (also while a cached page is revalidated). */
@@ -59,7 +59,7 @@ type CacheEntry = { page: MessagePage; storedAt: number };
  * changed) is cancelled and, should its response arrive anyway, dropped. That is
  * what keeps a late answer for the old filters from landing in the new list.
  */
-export function useMessageFeed(options: UseMessageFeedOptions): MessageFeed {
+export function useMessageFeed(options: UseMessageFeedOptions): MessageFeedState {
   const { enabled = true, keepPrevious = false } = options;
   const latest = useLatest(options);
   const key = filterKey(options.filters);

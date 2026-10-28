@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 
+import ErrorBoundary from "./components/ErrorBoundary";
 import PublicApp from "./PublicApp";
 import "./styles.css";
 
@@ -11,6 +12,8 @@ if (!root) {
 
 createRoot(root).render(
   <React.StrictMode>
-    <PublicApp />
+    <ErrorBoundary>
+      <PublicApp />
+    </ErrorBoundary>
   </React.StrictMode>
 );

@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 
+import ImageViewer from "../src/components/ImageViewer";
 import MessageFeed from "../src/components/MessageFeed";
 import type { Message } from "../src/types";
 
@@ -91,5 +93,28 @@ describe("ImageViewer", () => {
     expect(screen.getByAltText("竹新社中编辑发布的图片 1")).toHaveClass("media-image-contained");
     expect(screen.queryByText("待投递")).not.toBeInTheDocument();
     expect(screen.queryByText("已投递")).not.toBeInTheDocument();
+  });
+
+  it("is not disturbed when its parent re-renders with a new onClose", async () => {
+    const trigger = document.createElement("button");
+    document.body.append(trigger);
+    const returnFocusRef = { current: trigger };
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = render(<ImageViewer src="/a" alt="图" returnFocusRef={returnFocusRef} onClose={first} />);
+    expect(screen.getByRole("button", { name: "关闭图片预览" })).toHaveFocus();
+    const download = screen.getByRole("link", { name: /下载/ });
+    download.focus();
+
+    rerender(<ImageViewer src="/a" alt="图" returnFocusRef={returnFocusRef} onClose={second} />);
+
+    // The effect did not restart: focus was neither sent back to the page nor pulled to the close button.
+    expect(download).toHaveFocus();
+    expect(document.body).toHaveClass("viewer-open");
+
+    await userEvent.setup().keyboard("{Escape}");
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(first).not.toHaveBeenCalled();
+    trigger.remove();
   });
 });

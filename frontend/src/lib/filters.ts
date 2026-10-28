@@ -1,8 +1,6 @@
 import type { Filters, Message } from "../types";
 import { isMediaFilter } from "../utils";
 
-export const DEFAULT_FILTERS: Filters = { chatId: "all", media: "all", query: "" };
-
 /** Reads the filters out of a query string such as window.location.search. */
 export function parseFilters(search: string): Filters {
   const params = new URLSearchParams(search);

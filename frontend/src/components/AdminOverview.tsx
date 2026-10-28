@@ -66,7 +66,7 @@ export default function AdminOverview({
   );
 }
 
-export function AlertLifecycleOverview({ alerts, onOpen }: { alerts: AdminOverview["alerts"]; onOpen: (view: AdminView) => void }) {
+function AlertLifecycleOverview({ alerts, onOpen }: { alerts: AdminOverview["alerts"]; onOpen: (view: AdminView) => void }) {
   const trend = alerts.trend ?? [];
   return (
     <SpotlightCard as="section" className="ops-card" aria-label="规则生命周期">
@@ -86,7 +86,7 @@ function formatAge(minutes: number) {
   return `${Math.floor(minutes / 60)}小时${minutes % 60 ? `${minutes % 60}分钟` : ""}`;
 }
 
-export function SourceStatusTable({ groups }: { groups: Group[] }) {
+function SourceStatusTable({ groups }: { groups: Group[] }) {
   if (!groups.length) return <p className="empty-copy">暂无来源配置</p>;
   return (
     <table className="source-table">

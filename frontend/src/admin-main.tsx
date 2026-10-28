@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import ClickSpark from "./bits/ClickSpark";
 import App from "./App";
+import ErrorBoundary from "./components/ErrorBoundary";
 import "./styles.css";
 
 
@@ -11,8 +12,10 @@ if (!root) throw new Error("Missing #app");
 
 createRoot(root).render(
   <React.StrictMode>
-    <ClickSpark>
-      <App />
-    </ClickSpark>
+    <ErrorBoundary>
+      <ClickSpark>
+        <App />
+      </ClickSpark>
+    </ErrorBoundary>
   </React.StrictMode>
 );

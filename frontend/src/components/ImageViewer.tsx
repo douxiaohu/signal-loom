@@ -2,11 +2,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, ExternalLink, Download } from "lucide-react";
 
-export type OpenImageData = {
-  src: string;
-  originalSrc?: string;
-  alt: string;
-};
+import { useLatest } from "../hooks/useLatest";
 
 type ImageViewerProps = {
   src: string;
@@ -17,6 +13,9 @@ type ImageViewerProps = {
 
 export default function ImageViewer({ src, alt, returnFocusRef, onClose }: ImageViewerProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  // Read through a ref so that a parent re-render (new onClose identity) does not
+  // re-run the effect below, which would steal focus and flicker the page lock.
+  const latestClose = useLatest(onClose);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -25,7 +24,7 @@ export default function ImageViewer({ src, alt, returnFocusRef, onClose }: Image
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        latestClose.current();
         return;
       }
       if (event.key === "Tab") {
@@ -39,7 +38,7 @@ export default function ImageViewer({ src, alt, returnFocusRef, onClose }: Image
       document.body.classList.remove("viewer-open");
       returnFocusRef?.current?.focus();
     };
-  }, [onClose, returnFocusRef]);
+  }, [latestClose, returnFocusRef]);
 
   return createPortal(
     <div
