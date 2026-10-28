@@ -13,8 +13,7 @@ const buttonVariants = cva(
         destructive: "bg-destructive text-white hover:bg-destructive/90",
         outline: "border border-border bg-card text-foreground hover:bg-accent",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-        nav: "bg-card text-foreground shadow-[0_0_0_1px_var(--border),0_1px_2px_oklch(0.21_0.02_265/0.06)] hover:bg-card hover:text-foreground"
+        ghost: "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       },
       size: {
         default: "h-9 rounded-lg px-3.5 text-sm",

@@ -30,7 +30,7 @@ export default defineConfig({
     globals: true,
     setupFiles: "./test/setup.ts",
     restoreMocks: true,
-    exclude: ["test/ui-source.test.mjs", "e2e/**", "node_modules/**"]
+    exclude: ["e2e/**", "node_modules/**"]
   },
   build: {
     chunkSizeWarningLimit: 250,

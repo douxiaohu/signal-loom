@@ -1,4 +1,4 @@
-import type { Group, MediaFilter, Message } from "./types";
+import type { MediaFilter } from "./types";
 
 export const mediaOptions: Array<{ value: MediaFilter; label: string }> = [
   { value: "all", label: "全部" },
@@ -34,19 +34,6 @@ export const fullDateFormatter = new Intl.DateTimeFormat("zh-CN", {
 
 export function mediaLabel(value: string) {
   return mediaOptions.find((item) => item.value === value)?.label || value;
-}
-
-export function latestMessageLabel(groups: Group[]) {
-  const sortedTimes = groups
-    .map((group) => group.last_message_time)
-    .filter((value): value is string => Boolean(value))
-    .sort();
-  const latest = sortedTimes[sortedTimes.length - 1];
-  return latest ? formatDate(latest) : "暂无数据";
-}
-
-export function mediaMessageCount(messages: Message[]) {
-  return messages.filter((message) => Boolean(message.media_type)).length;
 }
 
 export function formatCount(value: number) {
@@ -111,8 +98,4 @@ export function sourceHue(seed: string): number {
     hash = (hash * 31 + seed.charCodeAt(index)) | 0;
   }
   return Math.abs(hash) % 360;
-}
-
-export function languageHue(seed: string): number {
-  return (sourceHue(seed) + 137) % 360;
 }

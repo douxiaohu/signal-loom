@@ -1,40 +1,26 @@
+import { ApiError, itemsOf, request } from "./lib/http";
+import { messagePageParams } from "./lib/filters";
 import type { AdminOverview, AlertMatch, AlertRule, Filters, Group, MessagePage, OperationSummary, Session, VisitRecord, VisitStats } from "./types";
 
-export class ApiError extends Error {
-  status: number;
+export { ApiError };
 
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
+/** "立即采集" waits for the crawl to finish, which can take a while. */
+const CRAWL_TIMEOUT_MS = 120_000;
+
+function withPage(page: MessagePage): MessagePage {
+  return { ...page, items: page.items ?? [] };
 }
 
-export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers);
-  if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-  const response = await fetch(url, { ...init, credentials: "same-origin", headers });
-  if (!response.ok) {
-    let detail = `${response.status} ${response.statusText}`.trim();
-    try {
-      const body = (await response.json()) as { detail?: string };
-      if (body.detail) detail = body.detail;
-    } catch {
-      // Keep the HTTP fallback when the response is not JSON.
-    }
-    throw new ApiError(response.status, detail);
-  }
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
-}
-
-export const fetchSession = () => apiFetch<Session>("/api/session");
-export const login = (apiKey: string) => apiFetch<Session>("/api/auth/login", { method: "POST", body: JSON.stringify({ api_key: apiKey }) });
-export const logout = () => apiFetch<void>("/api/auth/logout", { method: "POST" });
+export const fetchSession = () => request<Session>("/api/session");
+export const login = (apiKey: string) => request<Session>("/api/auth/login", { method: "POST", body: { api_key: apiKey } });
+export const logout = () => request<void>("/api/auth/logout", { method: "POST" });
 
 export async function fetchGroups(signal?: AbortSignal) {
-  const data = await apiFetch<{ items: Array<Partial<Group> & Pick<Group, "chat_id" | "name" | "health_status"> & { source_url: string }> }>("/api/admin/sources", { signal });
-  return data.items.map((source): Group => ({
+  const data = await request<{ items?: Array<Partial<Group> & Pick<Group, "chat_id" | "name" | "health_status"> & { source_url: string }> | null }>(
+    "/api/admin/sources",
+    { signal }
+  );
+  return itemsOf(data).map((source): Group => ({
     chat_id: source.chat_id,
     name: source.name,
     source: source.source_url,
@@ -53,29 +39,34 @@ export async function fetchGroups(signal?: AbortSignal) {
   }));
 }
 
-export function fetchMessages(filters: Filters, options: { cursor?: string; limit: number; signal?: AbortSignal }) {
-  const params = new URLSearchParams({ limit: String(options.limit), media: filters.media });
-  if (options.cursor) params.set("cursor", options.cursor);
-  if (filters.chatId !== "all") params.set("chat_id", filters.chatId);
-  if (filters.query.trim()) params.set("query", filters.query.trim());
-  return apiFetch<MessagePage>(`/api/admin/messages?${params}`, { signal: options.signal });
+export async function fetchMessages(filters: Filters, options: { cursor?: string; limit: number; signal?: AbortSignal }) {
+  const params = messagePageParams(filters, options);
+  return withPage(await request<MessagePage>(`/api/admin/messages?${params}`, { signal: options.signal }));
 }
 
-export const fetchOperations = (signal?: AbortSignal) => apiFetch<OperationSummary>("/api/admin/operations/summary", { signal });
-export const fetchAlerts = (signal?: AbortSignal) => apiFetch<{ items: AlertMatch[] }>("/api/admin/matches", { signal }).then((data) => data.items);
-export const fetchAlertRules = (signal?: AbortSignal) => apiFetch<{ items: AlertRule[] }>("/api/admin/rules", { signal }).then((data) => data.items);
+export const fetchOperations = async (signal?: AbortSignal): Promise<OperationSummary> => {
+  const summary = await request<OperationSummary>("/api/admin/operations/summary", { signal });
+  return { ...summary, sources: summary.sources ?? [], unhealthy_sources: summary.unhealthy_sources ?? [] };
+};
+export const fetchAlerts = async (signal?: AbortSignal) => itemsOf(await request<{ items?: AlertMatch[] | null }>("/api/admin/matches", { signal }));
+export const fetchAlertRules = async (signal?: AbortSignal) => itemsOf(await request<{ items?: AlertRule[] | null }>("/api/admin/rules", { signal }));
 
 export const createAlertRule = (payload: { name: string; keyword: string; source_ids: number[] }) =>
-  apiFetch<AlertRule>("/api/admin/rules", { method: "POST", body: JSON.stringify({ ...payload, enabled: false }) });
+  request<AlertRule>("/api/admin/rules", { method: "POST", body: { ...payload, enabled: false } });
 export const patchAlertRule = (id: number, payload: Partial<AlertRule>) =>
-  apiFetch<AlertRule>(`/api/admin/rules/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-export const acknowledgeAlert = (id: number) => apiFetch<AlertMatch>(`/api/admin/matches/${id}/acknowledge`, { method: "POST" });
-export const resolveAlert = (id: number) => apiFetch<AlertMatch>(`/api/admin/matches/${id}/resolve`, { method: "POST" });
+  request<AlertRule>(`/api/admin/rules/${id}`, { method: "PATCH", body: payload });
+export const acknowledgeAlert = (id: number) => request<AlertMatch>(`/api/admin/matches/${id}/acknowledge`, { method: "POST" });
+export const resolveAlert = (id: number) => request<AlertMatch>(`/api/admin/matches/${id}/resolve`, { method: "POST" });
 
 export const createSource = (payload: { name: string; source_url: string }) =>
-  apiFetch<Group>("/api/admin/sources", { method: "POST", body: JSON.stringify(payload) });
+  request<Group>("/api/admin/sources", { method: "POST", body: payload });
 export const patchSource = (chatId: number, payload: { name?: string; enabled?: boolean; public_visible?: boolean }) =>
-  apiFetch<Group>(`/api/admin/sources/${chatId}`, { method: "PATCH", body: JSON.stringify(payload) });
-export const crawlSource = (chatId: number) => apiFetch<unknown>(`/api/admin/sources/${chatId}/crawl-now`, { method: "POST" });
-export const fetchOverview = (signal?: AbortSignal) => apiFetch<AdminOverview>("/api/admin/overview", { signal });
-export const fetchVisits = (signal?: AbortSignal) => apiFetch<{ items: VisitRecord[]; stats: VisitStats }>("/api/admin/visits", { signal });
+  request<Group>(`/api/admin/sources/${chatId}`, { method: "PATCH", body: payload });
+export const crawlSource = (chatId: number) =>
+  request<unknown>(`/api/admin/sources/${chatId}/crawl-now`, { method: "POST", timeoutMs: CRAWL_TIMEOUT_MS });
+
+export const fetchOverview = (signal?: AbortSignal) => request<AdminOverview>("/api/admin/overview", { signal });
+export async function fetchVisits(signal?: AbortSignal) {
+  const payload = await request<{ items?: VisitRecord[] | null; stats: VisitStats }>("/api/admin/visits", { signal });
+  return { items: itemsOf(payload), stats: payload.stats };
+}

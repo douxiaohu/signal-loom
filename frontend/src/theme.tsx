@@ -1,5 +1,7 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 
+import { safeStorage } from "./lib/storage";
+
 export type ThemeId = "midnight" | "aurora" | "ember" | "paper";
 
 const options: Array<[ThemeId, string]> = [
@@ -22,7 +24,7 @@ function isThemeId(value: unknown): value is ThemeId {
 }
 
 function readTheme(): ThemeId {
-  const stored = window.localStorage.getItem(storageKey);
+  const stored = safeStorage.get(storageKey);
   return isThemeId(stored) ? stored : "midnight";
 }
 
@@ -33,7 +35,7 @@ function applyTheme(theme: ThemeId) {
 
 function setTheme(theme: ThemeId) {
   applyTheme(theme);
-  window.localStorage.setItem(storageKey, theme);
+  safeStorage.set(storageKey, theme);
   window.dispatchEvent(new CustomEvent<ThemeId>(themeEvent, { detail: theme }));
 }
 
