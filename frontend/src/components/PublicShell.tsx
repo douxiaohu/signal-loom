@@ -1,7 +1,7 @@
 import { Newspaper } from "lucide-react";
 
 import ShinyText from "../bits/ShinyText";
-import { ThemeSwitcher } from "../theme";
+import { ThemeSelect } from "../theme";
 
 type PublicShellProps = {
   current: "feed";
@@ -36,7 +36,7 @@ export default function PublicShell({ current, children }: PublicShellProps) {
           })}
         </nav>
         <div className="admin-footer">
-          <ThemeSwitcher />
+          <ThemeSelect />
         </div>
       </aside>
       <div className="admin-content">{children}</div>

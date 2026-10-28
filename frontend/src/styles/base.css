@@ -1,105 +1,88 @@
 * { box-sizing: border-box; }
-html { min-width: 320px; color-scheme: light; background: var(--bg); }
+
+html {
+  min-width: 320px;
+  background: var(--background);
+  scroll-behavior: smooth;
+}
 html[data-theme="midnight"],
 html[data-theme="aurora"],
 html[data-theme="ember"] { color-scheme: dark; }
+html[data-theme="paper"] { color-scheme: light; }
+
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Public site ambience: a single, quiet wash of the theme accent. */
+body:has(.public-page) {
   background:
-    radial-gradient(1200px 600px at 50% -120px, rgba(0, 240, 255, 0.07), transparent 70%),
-    radial-gradient(800px 500px at 85% 20%, rgba(124, 58, 237, 0.05), transparent 60%),
-    var(--bg);
-  color: var(--text);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    radial-gradient(1100px 520px at 50% -280px, color-mix(in srgb, var(--neon) 9%, transparent), transparent 72%),
+    var(--background);
+  background-attachment: fixed;
 }
 
-/* ── Custom Cyberpunk Scrollbar ── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ── Scrollbars ──────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  border: 3px solid transparent;
   border-radius: 9999px;
-  transition: background 0.2s ease;
+  background-clip: content-box;
+  background-color: var(--scrollbar);
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--neon);
-  box-shadow: 0 0 10px var(--neon);
+::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-hover); }
+
+::selection {
+  background: color-mix(in srgb, var(--neon) 24%, transparent);
+  color: inherit;
 }
 
-/* ── Shimmer Animation for Modern Skeletons ── */
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+button, input, select, textarea { font: inherit; color: inherit; }
+button, select, input, summary, a {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-
-.shimmer-box {
-  position: relative;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.shimmer-box::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.08) 50%,
-    transparent 100%
-  );
-  animation: shimmer 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ── Neon Glow Focus & Rings ── */
-.neon-glow {
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), 0 0 30px rgba(0, 240, 255, 0.1);
-}
-
-.neon-border-glow:focus-within {
-  border-color: var(--neon) !important;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
-}
-::selection { background: color-mix(in oklch, var(--foreground) 14%, transparent); }
-button, input, select, textarea { font: inherit; }
-button, select, input, summary, a { touch-action: manipulation; -webkit-tap-highlight-color: color-mix(in srgb, var(--brand) 16%, transparent); }
 button { cursor: pointer; }
-button:disabled { cursor: wait; opacity: .56; }
+button:disabled { cursor: wait; opacity: .6; }
+img, svg, video { max-width: 100%; }
 
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 summary:focus-visible,
-a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
 
 .skip-link {
   position: fixed;
   z-index: 100;
-  top: 8px;
+  top: 10px;
   left: 12px;
-  padding: 10px 13px;
-  border: 1px solid var(--brand);
-  border-radius: 8px;
-  background: var(--paper);
-  transform: translateY(-160%);
-  transition: transform 150ms ease;
+  padding: 10px 14px;
+  border: 1px solid var(--ring);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-180%);
+  transition: transform 160ms var(--ease-out);
 }
 .skip-link:focus { transform: translateY(0); }
+
 .single-live-region,
 .sr-only {
   position: absolute !important;
@@ -111,44 +94,26 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   border: 0 !important;
 }
 
-.theme-picker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--paper);
-  color: var(--muted);
+/* Shimmer used by the feed skeletons. */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
-.theme-picker-label { font-size: 12px; font-weight: 500; }
-.theme-picker select {
-  min-width: 72px;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 500;
-}
-.theme-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--brand);
-}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 
+/* ── Generic controls shared with the console ────────────────────────────── */
 .primary-button,
 .secondary-button,
 .new-message-button {
-  min-height: 36px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   padding: 0 14px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 10px;
   font-weight: 500;
   letter-spacing: -0.01em;
 }
@@ -158,13 +123,13 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .secondary-button,
 .logout-button,
 .icon-button {
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--muted);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
 }
 .secondary-button:hover,
 .logout-button:hover,
-.icon-button:hover { border-color: var(--brand); color: var(--text); }
+.icon-button:hover { border-color: var(--border-strong); color: var(--foreground); }
 .logout-button,
 .icon-button {
   min-width: 36px;
@@ -174,8 +139,9 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   justify-content: center;
   gap: 6px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: 10px;
 }
+
 .inline-error {
   display: flex;
   align-items: center;
@@ -183,32 +149,34 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   gap: 12px;
   margin: 12px 0;
   padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
+  border: 1px solid var(--danger-border);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--danger) 8%, var(--paper));
+  background: var(--danger-surface);
 }
 .inline-error strong { color: var(--danger); font-size: 13px; }
-.inline-error p, .inline-error span { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+.inline-error p, .inline-error span { margin: 3px 0 0; color: var(--muted-foreground); font-size: 12px; }
 .inline-error button {
   flex: 0 0 auto;
   min-height: 36px;
-  padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
-  border-radius: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--danger-border);
+  border-radius: 10px;
   background: transparent;
   color: var(--danger);
 }
 .form-error { margin: 0; color: var(--danger); font-size: 13px; }
+
 .empty-state svg { margin: 0 auto 2px; }
 .empty-state, .feed-end {
   display: grid;
   gap: 6px;
   padding: 28px 12px;
-  color: var(--soft);
+  color: var(--muted-foreground);
   text-align: center;
 }
-.empty-state strong { color: var(--text); }
+.empty-state strong { color: var(--foreground); }
 
+/* ── Console / admin shell (kept for the admin entry) ────────────────────── */
 .site-header {
   position: sticky;
   z-index: 30;
@@ -219,16 +187,17 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   gap: 16px;
   min-height: var(--header-h);
   padding: 8px max(20px, calc((100vw - 1120px) / 2));
-  background: color-mix(in oklch, var(--background) 84%, transparent);
+  background: var(--bg-scrim);
   -webkit-backdrop-filter: blur(18px) saturate(1.2);
   backdrop-filter: blur(18px) saturate(1.2);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
 }
 .site-brand {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  color: inherit;
   text-decoration: none;
 }
 .brand-mark {
@@ -244,7 +213,7 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 .site-nav {
   display: flex;
@@ -252,7 +221,7 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   gap: 2px;
   min-width: max-content;
   padding: 3px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--secondary);
 }
@@ -264,13 +233,13 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   align-items: center;
   gap: 8px;
   padding-left: 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--input);
   border-radius: 10px;
-  background: var(--paper);
-  color: var(--soft);
-  box-shadow: var(--shadow);
+  background: var(--card);
+  color: var(--muted-foreground);
+  box-shadow: var(--card-shadow);
 }
-.site-search:focus-within { border-color: color-mix(in oklch, var(--foreground) 28%, var(--line)); }
+.site-search:focus-within { border-color: var(--ring); }
 .site-search input {
   min-width: 0;
   height: 36px;
@@ -280,11 +249,12 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   outline: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--text);
+  color: var(--foreground);
 }
 .site-search button { align-self: center; margin-right: 4px; }
 .header-actions { display: flex; align-items: center; gap: 8px; }
 
+/* ── Image viewer ────────────────────────────────────────────────────────── */
 .viewer-open { overflow: hidden; }
 .image-viewer-backdrop {
   position: fixed;
@@ -294,7 +264,9 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   display: grid;
   place-items: center;
   padding: 56px 24px 24px;
-  background: rgba(8, 10, 14, .72);
+  background: rgba(4, 7, 12, .82);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   cursor: zoom-out;
 }
 .image-viewer-image {
@@ -338,22 +310,16 @@ a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
     padding: 8px 0 10px;
   }
   .site-search { grid-column: 1 / -1; }
-  .site-brand h1, .site-brand strong { font-size: 15px; }
 }
 @media (max-width: 680px) {
   .theme-picker-label { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
   *, *::before, *::after {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .site-header {
-    background: var(--paper);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
   }
 }

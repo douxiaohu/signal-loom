@@ -3,7 +3,7 @@ import { History, LayoutDashboard, RadioTower, Search, ShieldAlert } from "lucid
 import ShinyText from "../bits/ShinyText";
 import SpotlightCard from "../bits/SpotlightCard";
 import { Button } from "@/components/ui/button";
-import { ThemeSwitcher } from "../theme";
+import { ThemeSelect } from "../theme";
 import type { AdminView } from "../types";
 
 const items: Array<{ id: AdminView; label: string; icon: typeof LayoutDashboard }> = [
@@ -48,7 +48,7 @@ export default function AdminShell({ view, onChangeView, onLogout, children }: A
           })}
         </nav>
         <div className="admin-footer">
-          <ThemeSwitcher />
+          <ThemeSelect />
           <Button variant="outline" className="admin-logout" type="button" onClick={onLogout}>退出</Button>
         </div>
       </aside>

@@ -1,5 +1,17 @@
 import { useRef, useState } from "react";
-import { Download, ExternalLink, FileText, ImageOff, Inbox, Volume2, Link as LinkIcon, Check, Copy } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Download,
+  ExternalLink,
+  FileText,
+  ImageOff,
+  Inbox,
+  Link as LinkIcon,
+  Volume2
+} from "lucide-react";
 
 import type { MediaItem, Message } from "../types";
 import { cleanMessageContent, dayKey, formatDayLabel, formatTime, mediaLabel, sourceHue } from "../utils";
@@ -43,61 +55,64 @@ export default function MessageFeed({
 
   return (
     <>
-      <main id="message-list" className="message-list space-y-6" aria-label="消息时间线" tabIndex={-1}>
+      <main id="message-list" className="pub-feed" aria-label="消息时间线" tabIndex={-1}>
         {initialLoading && !messages.length ? <MessageSkeleton /> : null}
 
-        {groupedMessages(messages, groupDuplicates).map((entry) => (
+        {groupedMessages(messages, groupDuplicates).map((entry) =>
           entry.type === "day" ? (
-            <div key={entry.key} className="sticky top-16 z-20 flex items-center justify-center py-2 pointer-events-none">
-              <span className="px-4 py-1 text-[11px] font-mono font-semibold tracking-widest text-[var(--neon)] bg-[var(--card)]/90 border border-[var(--neon)]/30 rounded-full backdrop-blur-xl shadow-[0_0_15px_rgba(0,240,255,0.2)] uppercase">
-                {entry.label}
-              </span>
+            <div key={entry.key} className="pub-day">
+              <span>{entry.label}</span>
             </div>
           ) : (
-            <div key={entry.message.id} className="space-y-3">
+            <div key={entry.message.id} className="pub-feed-group">
               <MessageCard density={density} message={entry.message} onOpenImage={openViewer} />
               {entry.similar.length ? (
                 <button
-                  className="similar-toggle text-xs text-[var(--muted-foreground)] hover:text-[var(--neon)] ml-4 py-1 px-3 rounded-lg hover:bg-[var(--surface-muted)] transition-all duration-150 cursor-pointer flex items-center gap-1.5"
+                  className="pub-similar"
                   type="button"
                   aria-expanded={expanded.includes(entry.message.id)}
-                  onClick={() => setExpanded((ids) => ids.includes(entry.message.id) ? ids.filter((id) => id !== entry.message.id) : [...ids, entry.message.id])}
+                  aria-label={`${expanded.includes(entry.message.id) ? "隐藏" : "显示"} ${entry.similar.length} 条相似消息`}
+                  onClick={() =>
+                    setExpanded((ids) =>
+                      ids.includes(entry.message.id)
+                        ? ids.filter((id) => id !== entry.message.id)
+                        : [...ids, entry.message.id]
+                    )
+                  }
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--neon)]/60" />
-                  <span>{expanded.includes(entry.message.id) ? "隐藏" : "显示"} {entry.similar.length} 条相似消息</span>
+                  <span className="pub-similar-badge">{entry.similar.length}</span>
+                  <span aria-hidden="true">{expanded.includes(entry.message.id) ? "隐藏重复来源" : "条相似消息"}</span>
+                  {expanded.includes(entry.message.id)
+                    ? <ChevronUp size={13} aria-hidden="true" />
+                    : <ChevronDown size={13} aria-hidden="true" />}
                 </button>
               ) : null}
               {expanded.includes(entry.message.id) ? (
-                <div className="pl-4 sm:pl-6 border-l-2 border-[var(--neon)]/40 space-y-3 mt-2">
+                <div className="pub-similar-group">
                   {entry.similar.map((similar) => (
-                    <MessageCard key={similar.id} density={density} message={similar} onOpenImage={openViewer} />
+                    <MessageCard key={similar.id} compact density={density} message={similar} onOpenImage={openViewer} />
                   ))}
                 </div>
               ) : null}
             </div>
           )
-        ))}
+        )}
 
         {!initialLoading && hasMore ? (
-          <div className="flex justify-center pt-6 pb-12">
-            <button
-              className="load-more px-8 py-3 text-xs font-semibold tracking-wider text-[var(--foreground)] bg-[var(--card)]/80 hover:bg-[var(--surface-muted)] border border-[var(--border)] hover:border-[var(--neon)]/50 rounded-full shadow-lg hover:shadow-[0_0_20px_rgba(0,240,255,0.2)] backdrop-blur-xl transition-all duration-200 cursor-pointer disabled:opacity-50 active:scale-95"
-              type="button"
-              onClick={onLoadMore}
-              disabled={loadingMore}
-            >
+          <div className="pub-more">
+            <button type="button" onClick={onLoadMore} disabled={loadingMore}>
               {loadingMore ? "正在加载更多…" : "加载更多"}
             </button>
           </div>
         ) : !initialLoading && messages.length ? (
-          <div className="feed-end text-center text-xs text-[var(--muted-foreground)] py-12 border-t border-[var(--border)]/40 font-mono">
-            // ALL MESSAGES LOADED //
-          </div>
+          <div className="pub-feed-end">已经到底了</div>
         ) : !initialLoading ? (
-          <div className="empty-state flex flex-col items-center justify-center p-14 text-center border border-dashed border-[var(--border)] rounded-3xl bg-[var(--card)]/40 backdrop-blur-xl">
-            <Inbox size={40} className="text-[var(--neon)] mb-3 opacity-60 animate-pulse" aria-hidden="true" />
-            <strong className="text-sm font-semibold text-[var(--foreground)]">没有匹配消息</strong>
-            <span className="text-xs text-[var(--muted-foreground)] mt-1">调整来源、媒体类型或关键词后再试。</span>
+          <div className="pub-empty">
+            <span className="pub-empty-icon" aria-hidden="true">
+              <Inbox size={22} />
+            </span>
+            <strong>没有匹配的消息</strong>
+            <span>试试其它来源、媒体类型或关键词。</span>
           </div>
         ) : null}
       </main>
@@ -117,11 +132,13 @@ export default function MessageFeed({
 export function MessageCard({
   density,
   message,
-  onOpenImage
+  onOpenImage,
+  compact = false
 }: {
   density: FeedDensity;
   message: Message;
   onOpenImage: (image: OpenImage, trigger: HTMLButtonElement | null) => void;
+  compact?: boolean;
 }) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
@@ -130,7 +147,6 @@ export function MessageCard({
   const source = message.chat_title || "未知来源";
   const titleId = `message-${message.id}-title`;
   const markHue = sourceHue(`${message.chat_id ?? source}`);
-
   const cleanedContent = cleanMessageContent(message.content);
 
   const handleCopyLink = (e: React.MouseEvent) => {
@@ -153,49 +169,48 @@ export function MessageCard({
 
   return (
     <article
-      className="message-card group relative rounded-3xl border border-[var(--border)] bg-[var(--card)]/50 backdrop-blur-xl p-5 sm:p-6 transition-all duration-300 hover:border-[var(--neon)]/50 hover:-translate-y-1 hover:shadow-[0_12px_35px_-10px_rgba(0,240,255,0.18)]"
+      className={`pub-card message-card${density === "console" ? " is-console" : " is-reading"}${compact ? " is-nested" : ""}`}
       aria-labelledby={titleId}
     >
-      {/* 头部元信息栏 */}
-      <header className="message-byline flex items-center justify-between gap-3 mb-4 pb-3 border-b border-[var(--border)]/30">
-        <div className="message-byline-main flex items-center gap-3.5 min-w-0">
-          {/* Cyberpunk Squircle 头像 */}
-          <div
-            className="source-mark relative w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold text-white shadow-md shrink-0 select-none ring-1 ring-white/10 group-hover:scale-105 transition-transform duration-200"
-            style={{
-              background: `linear-gradient(135deg, hsl(${markHue} 80% 48%), hsl(${markHue + 40} 85% 32%))`,
-            }}
+      <header className="pub-card-head">
+        <div className="pub-source-id">
+          <span
+            className="pub-avatar source-mark"
             aria-hidden="true"
+            style={{
+              background: `linear-gradient(140deg, hsl(${markHue} 55% 46%), hsl(${markHue + 42} 58% 32%))`,
+              color: "#fff"
+            }}
           >
             {source.slice(0, 1).toUpperCase()}
-          </div>
+          </span>
 
-          <div className="min-w-0 flex flex-col justify-center">
-            <div className="flex items-center gap-2 min-w-0">
-              <h3 id={titleId} className="text-[15px] font-bold text-[var(--foreground)] truncate leading-tight tracking-tight">
-                {source}
-              </h3>
+          <div className="pub-card-name">
+            <h3 id={titleId} className="pub-card-source">{source}</h3>
+            <div className="pub-card-sub">
               {speaker !== source && (
-                <span className="byline-speaker text-xs text-[var(--muted-foreground)] truncate">· {speaker}</span>
+                <>
+                  <span className="byline-speaker pub-sender">· {speaker}</span>
+                  <span className="pub-sep" aria-hidden="true">/</span>
+                </>
               )}
+              <time dateTime={message.message_time} className="pub-card-time">
+                {formatTime(message.message_time)}
+              </time>
             </div>
-            <time dateTime={message.message_time} className="text-[11px] text-[var(--muted-foreground)] font-mono mt-0.5">
-              {formatTime(message.message_time)}
-            </time>
           </div>
         </div>
 
-        {/* 悬浮操作栏 (Smooth reveal on hover with neon micro-interaction) */}
-        <div className="flex items-center gap-1.5 opacity-80 sm:opacity-40 group-hover:opacity-100 transition-all duration-200">
+        <div className="pub-card-actions">
           {cleanedContent && (
             <button
               type="button"
               onClick={handleCopyText}
               title="复制正文"
               aria-label="复制正文内容"
-              className="p-1.5 hover:text-[var(--neon)] hover:bg-[var(--surface-muted)] rounded-xl transition-all duration-150 cursor-pointer active:scale-90"
+              className={copiedText ? "is-done" : undefined}
             >
-              {copiedText ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+              {copiedText ? <Check size={14} /> : <Copy size={14} />}
             </button>
           )}
 
@@ -204,49 +219,45 @@ export function MessageCard({
               <button
                 type="button"
                 onClick={handleCopyLink}
-                title="复制 Telegram 原文链接"
+                title="复制原文链接"
                 aria-label="复制 Telegram 原文链接"
-                className="p-1.5 hover:text-[var(--neon)] hover:bg-[var(--surface-muted)] rounded-xl transition-all duration-150 cursor-pointer active:scale-90"
+                className={copiedLink ? "is-done" : undefined}
               >
-                {copiedLink ? <Check size={14} className="text-emerald-400" /> : <LinkIcon size={14} />}
+                {copiedLink ? <Check size={14} /> : <LinkIcon size={14} />}
               </button>
 
               <a
                 href={message.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                title="跳转 Telegram 查看原文"
-                className="source-link inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 text-[var(--foreground)]/80 hover:text-[var(--neon)] bg-[var(--surface-muted)]/50 hover:bg-[var(--card)] border border-[var(--border)] hover:border-[var(--neon)]/40 rounded-xl transition-all duration-200 ml-1 hover:shadow-[0_0_10px_rgba(0,240,255,0.2)]"
+                title="在 Telegram 查看原文"
+                className="source-link pub-card-action-wide"
               >
                 <span>原文</span>
-                <ExternalLink size={12} />
+                <ExternalLink size={12} aria-hidden="true" />
               </a>
             </>
           )}
         </div>
       </header>
 
-      {/* 正文内容增强（超链接解析、段落分层、长文折叠） */}
       {cleanedContent ? (
         <RichContent content={cleanedContent} />
       ) : (
-        <p className="message-text text-xs text-[var(--muted-foreground)] italic font-mono">仅包含{mediaLabel(message.media_type || "text")}</p>
+        <p className="pub-media-note message-text">仅包含{mediaLabel(message.media_type || "text")}</p>
       )}
 
-      {/* 多媒体相册展示 */}
       {mediaItems.length ? (
-        <div className="media-grid mt-4">
+        <div className="pub-media media-grid">
           <MediaGallery items={mediaItems} message={message} onOpenImage={onOpenImage} />
         </div>
       ) : null}
 
       {density === "console" ? (
-        <footer className="message-foot mt-4 pt-2.5 border-t border-[var(--border)]/40 flex items-center justify-between text-[11px] text-[var(--muted-foreground)] font-mono">
+        <footer className="pub-card-foot message-foot">
           <span>消息 #{message.message_id}</span>
           {message.media_type && (
-            <span className="media-badge px-2 py-0.5 rounded-md bg-[var(--surface-muted)] text-[var(--foreground)] border border-[var(--border)]">
-              {mediaLabel(message.media_type)}
-            </span>
+            <span className="media-badge">{mediaLabel(message.media_type)}</span>
           )}
         </footer>
       ) : null}
@@ -254,11 +265,10 @@ export function MessageCard({
   );
 }
 
-// 优化的未来感多媒体画廊
 function MediaGallery({
   items,
   message,
-  onOpenImage,
+  onOpenImage
 }: {
   items: MediaItem[];
   message: Message;
@@ -267,17 +277,25 @@ function MediaGallery({
   const count = items.length;
 
   if (count === 1) {
+    const only = items[0];
+    const kind = only.kind.toLowerCase();
+    const type = (message.media_type || kind).toLowerCase();
+    const plain =
+      ["audio", "voice", "document", "file"].includes(kind) ||
+      ["audio", "voice", "document"].includes(type);
     return (
-      <div className="overflow-hidden rounded-2xl border border-[var(--border)] shadow-md max-h-[520px] flex justify-center bg-black/40 backdrop-blur-md">
-        <MediaAttachment item={items[0]} message={message} index={0} onOpenImage={onOpenImage} />
+      <div className={`pub-media-single${plain ? " is-plain" : ""}`}>
+        <div className="pub-media-cell">
+          <MediaAttachment item={items[0]} message={message} index={0} onOpenImage={onOpenImage} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2.5 overflow-hidden rounded-2xl">
+    <div className={`pub-media-grid${count > 4 ? " is-many" : ""}`}>
       {items.map((item, idx) => (
-        <div key={idx} className="aspect-[4/3] overflow-hidden rounded-xl border border-[var(--border)] shadow-sm bg-black/40 backdrop-blur-md hover:border-[var(--neon)]/40 transition-colors">
+        <div key={idx} className="pub-media-cell">
           <MediaAttachment item={item} message={message} index={idx} onOpenImage={onOpenImage} />
         </div>
       ))}
@@ -307,18 +325,33 @@ function MediaAttachment({
 
   if (failed) {
     return (
-      <a className="media-fallback flex items-center gap-2 p-3.5 text-xs text-[var(--muted-foreground)] bg-[var(--surface-muted)] rounded-xl hover:text-[var(--foreground)] border border-[var(--border)]" href={fallbackUrl} target="_blank" rel="noopener noreferrer">
-        <ImageOff size={16} aria-hidden="true" />
-        <span>媒体加载失败，打开原文</span>
+      <a
+        className="pub-attachment"
+        href={fallbackUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <span className="pub-attachment-icon" aria-hidden="true"><ImageOff size={17} /></span>
+        <span className="pub-attachment-copy">
+          <strong>媒体加载失败</strong>
+          <small>点击打开原文查看</small>
+        </span>
+        <span className="pub-attachment-cta"><ExternalLink size={13} /></span>
       </a>
     );
   }
 
   if (["audio", "voice"].includes(kind) || ["audio", "voice"].includes(type)) {
     return (
-      <div className="audio-card flex items-center gap-3 p-3 bg-[var(--surface-muted)]/80 rounded-2xl border border-[var(--border)] backdrop-blur-md">
-        <Volume2 size={18} className="text-[var(--neon)]" aria-hidden="true" />
-        <audio className="audio-control w-full h-8" controls preload="metadata" aria-label={`${source}中的音频`} onError={() => setFailed(true)}>
+      <div className="pub-audio">
+        <Volume2 size={17} aria-hidden="true" />
+        <audio
+          className="audio-control"
+          controls
+          preload="metadata"
+          aria-label={`${source}中的音频`}
+          onError={() => setFailed(true)}
+        >
           <source src={item.url} />
         </audio>
       </div>
@@ -327,21 +360,14 @@ function MediaAttachment({
 
   if (["document", "file"].includes(kind) || type === "document") {
     return (
-      <a
-        className="file-card flex items-center justify-between p-3.5 bg-[var(--surface-muted)]/80 hover:bg-[var(--card)] rounded-2xl border border-[var(--border)] hover:border-[var(--neon)]/40 text-[var(--foreground)] transition-all duration-200 group/file backdrop-blur-md"
-        href={item.url}
-        download
-        aria-label="下载文件"
-      >
-        <div className="flex items-center gap-3">
-          <FileText size={22} className="text-[var(--neon)]" aria-hidden="true" />
-          <div className="flex flex-col">
-            <strong className="text-xs font-semibold">附件文件</strong>
-            <small className="text-[11px] text-[var(--muted-foreground)] font-mono">受保护的媒体资源</small>
-          </div>
-        </div>
-        <span className="file-action inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)] group-hover/file:text-[var(--neon)] transition-colors">
-          <Download size={14} aria-hidden="true" /> 下载文件
+      <a className="pub-attachment file-card" href={item.url} download aria-label="下载文件">
+        <span className="pub-attachment-icon" aria-hidden="true"><FileText size={17} /></span>
+        <span className="pub-attachment-copy">
+          <strong>附件文件</strong>
+          <small>点击下载</small>
+        </span>
+        <span className="pub-attachment-cta">
+          <Download size={14} aria-hidden="true" /> <span>下载</span>
         </span>
       </a>
     );
@@ -350,7 +376,7 @@ function MediaAttachment({
   if (["video", "animation"].includes(kind)) {
     return (
       <video
-        className="media-video w-full h-full max-h-[520px] object-contain rounded-2xl"
+        className="pub-media-video"
         controls
         preload="metadata"
         aria-label={`${source}中的视频`}
@@ -364,16 +390,22 @@ function MediaAttachment({
   return (
     <button
       ref={imageButtonRef}
-      className="media-image-trigger w-full h-full overflow-hidden flex items-center justify-center cursor-zoom-in border-0 p-0 relative group/img"
+      className="pub-media-trigger"
       type="button"
       aria-label={`查看完整图片 ${index + 1}`}
-      onClick={() => onOpenImage({
-        src: item.original_url || item.url,
-        alt: `${source}中${speaker}发布的完整图片 ${index + 1}`
-      }, imageButtonRef.current)}
+      onClick={() =>
+        onOpenImage(
+          {
+            src: item.original_url || item.url,
+            alt: `${source}中${speaker}发布的完整图片 ${index + 1}`
+          },
+          imageButtonRef.current
+        )
+      }
     >
+      {!loaded ? <span className="pub-media-loading" aria-hidden="true" /> : null}
       <img
-        className={`media-image-contained w-full h-full object-contain max-h-[500px] transition-all duration-300 group-hover/img:scale-102 ${loaded ? "opacity-100 is-loaded" : "opacity-0"}`}
+        className={`pub-media-img media-image-contained${loaded ? " is-loaded" : ""}`}
         src={item.url}
         alt={`${source}中${speaker}发布的图片 ${index + 1}`}
         loading="lazy"
@@ -385,24 +417,21 @@ function MediaAttachment({
   );
 }
 
-// 现代流动流光骨架屏 (Shimmer Skeleton Screen)
 function MessageSkeleton() {
   return (
-    <div className="space-y-4">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="shimmer-box rounded-3xl p-6 space-y-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-white/5" />
-            <div className="space-y-2">
-              <div className="w-32 h-4 bg-white/5 rounded-md" />
-              <div className="w-20 h-3 bg-white/5 rounded-md" />
+    <div className="pub-skeleton" aria-hidden="true">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="pub-skeleton-card">
+          <div className="pub-skeleton-head">
+            <div className="pub-skeleton-line" style={{ width: 34, height: 34, borderRadius: 10 }} />
+            <div style={{ flex: 1 }}>
+              <div className="pub-skeleton-line" style={{ width: "32%", margin: 0 }} />
+              <div className="pub-skeleton-line" style={{ width: "18%" }} />
             </div>
           </div>
-          <div className="space-y-2.5 pt-1">
-            <div className="w-full h-3.5 bg-white/5 rounded-md" />
-            <div className="w-5/6 h-3.5 bg-white/5 rounded-md" />
-            <div className="w-3/5 h-3.5 bg-white/5 rounded-md" />
-          </div>
+          <div className="pub-skeleton-line" style={{ width: "94%" }} />
+          <div className="pub-skeleton-line" style={{ width: "86%" }} />
+          <div className="pub-skeleton-line" style={{ width: "62%" }} />
         </div>
       ))}
     </div>

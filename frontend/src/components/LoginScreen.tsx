@@ -6,7 +6,7 @@ import SpotlightCard from "../bits/SpotlightCard";
 import StarBorder from "../bits/StarBorder";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ThemeSwitcher } from "../theme";
+import { ThemeSelect } from "../theme";
 
 type LoginScreenProps = {
   error: string;
@@ -28,7 +28,7 @@ export default function LoginScreen({ error, loading, onLogin }: LoginScreenProp
 
   return (
     <main className="login-shell">
-      <div className="login-theme"><ThemeSwitcher /></div>
+      <div className="login-theme"><ThemeSelect /></div>
       <SpotlightCard as={Card} role="region" className="login-panel" aria-labelledby="login-title">
         <div className="login-brand" aria-hidden="true"><ShieldCheck size={26} /></div>
         <p className="eyebrow">管理入口</p>

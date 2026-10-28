@@ -1,5 +1,5 @@
 import ShinyText from "../bits/ShinyText";
-import { ThemeSwitcher } from "../theme";
+import { ThemeSelect } from "../theme";
 import SearchField from "./SearchField";
 import SiteNav from "./SiteNav";
 
@@ -26,7 +26,7 @@ export default function PublicHeader({ onSubmit, query, onQueryChange }: PublicH
         onSubmit={onSubmit}
       />
       <div className="header-actions">
-        <ThemeSwitcher />
+        <ThemeSelect />
       </div>
     </header>
   );

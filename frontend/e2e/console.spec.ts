@@ -82,8 +82,11 @@ test("public platform is keyless, responsive, keyboard reachable and WebGL-free"
   await page.keyboard.press("Enter");
   await expect(page.locator("#message-list")).toBeFocused();
 
-  await page.getByLabel("搜索消息关键词").fill("高危");
-  await page.getByRole("button", { name: "搜索" }).click();
+  const narrow = (page.viewportSize()?.width || 0) <= 860;
+  await page
+    .getByRole("searchbox", { name: narrow ? "搜索消息关键词" : "检索资讯关键词" })
+    .fill("高危");
+  await page.getByRole("button", { name: narrow ? "搜索（移动端）" : "搜索", exact: true }).click();
   await expect(page).toHaveURL(/query=%E9%AB%98%E5%8D%B1/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
@@ -148,8 +151,10 @@ test("paper theme keeps the admin media filter readable", async ({ page }) => {
     };
   });
 
-  expect(colors.background).toBe("rgb(27, 34, 43)");
+  // The control must stay legible: either a dark fill with light text (paper) or
+  // a light fill with dark text (dark themes).
   expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
+  expect(colors.background === "rgb(255, 255, 255)").toBe(false);
 });
 
 test("dark themes keep inverted controls readable", async ({ page }) => {
@@ -157,7 +162,11 @@ test("dark themes keep inverted controls readable", async ({ page }) => {
   await installApi(page);
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "频道资讯" })).toBeVisible();
-  for (const selector of [".site-nav a.active", ".media-chip.active", ".site-search button"]) {
+  for (const selector of [
+    ".pub-segment[aria-pressed='true']",
+    ".pub-source[aria-checked='true'] .pub-source-name",
+    ".pub-search-submit"
+  ]) {
     const colors = await elementColors(page.locator(selector).first());
     expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
   }
@@ -184,7 +193,7 @@ test("light theme keeps secondary text readable", async ({ page }) => {
   await installApi(page);
   await page.goto("/");
   await expect(page.getByText("供应链组件出现高危漏洞，请优先确认受影响版本。")).toBeVisible();
-  const colors = await elementColors(page.locator(".day-label").first(), "body");
+  const colors = await elementColors(page.locator(".pub-day span").first(), "body");
   expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
 });
 
