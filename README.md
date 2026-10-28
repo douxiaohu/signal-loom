@@ -4,7 +4,7 @@
 
 单机可部署的公开资讯聚合服务。采集公开 Telegram 频道（以及可选的 Bot 群组/频道），提供免密浏览、检索和媒体查看。
 
-技术栈是 **Python 3.11 + FastAPI + React 19 + SQLite**。默认一个容器、一个进程、一份本地数据库。容器内 uvicorn 绑定 `0.0.0.0:8000`，Compose **只把端口发布到** `127.0.0.1:8000`。公网访问交给同机反向代理或 Tunnel。必须保持 `--workers 1`：采集调度和 SQLite 写者都在同一进程里。
+技术栈是 **Go + React 19 + SQLite**（服务端已从 Python/FastAPI 迁移到 Go）。默认一个容器、一个进程、一份本地数据库。容器内服务监听 `0.0.0.0:8000`，Compose **只把端口发布到** `127.0.0.1:8000`。公网访问交给同机反向代理或 Tunnel。只能跑一个实例：采集调度和 SQLite 写者都在同一进程里。
 
 | 入口 | 地址 | 访问控制 |
 | --- | --- | --- |
@@ -23,7 +23,7 @@
                       |
               127.0.0.1:8000  (Compose 发布)
                       |
-              uvicorn --workers 1
+              Go 服务（单进程）
          +------------+------------+
          | HTTP       | Jobs       |
          | /          | 频道采集   |
@@ -132,22 +132,30 @@ radar.example.com {
 
 部署后应满足：HTTPS 根路径免密；`/admin` 才有密钥框；未登录访问 `/api/admin/sources` 返回 401；公网访问裸 `IP:8000` 失败。
 
+对反向代理的要求：
+
+- **保留原始 `Host` 头**（Caddy 默认保留；Nginx 需要 `proxy_set_header Host $host;`）。所有写操作（登录、登出、管理端修改、反馈）都会校验 `Origin` 与 `Host` 同源，`Host` 被改写会得到 403。
+- 传递客户端地址：Caddy 默认带 `X-Forwarded-For`；Nginx 需要 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`。服务只信任来自 `TRUSTED_PROXIES`（默认：本机与内网段）的转发头，并取链上最右侧不属于可信代理的地址作为客户端 IP，用于登录限流和访问统计；直连客户端伪造的转发头一律忽略。
+- 在 Cloudflare 等 CDN 之后，把 CDN 的出口网段加入 `TRUSTED_PROXIES`，否则看到的是 CDN 地址。
+
 ## 本地开发
 
+需要 Go 1.26+、Node.js 20+。
+
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
 cp .env.example .env
 cp config/groups.example.yaml config/groups.yaml
-cd frontend && npm ci && cd ..
+cd frontend && npm ci && npm run build && cd ..
 
 APP_ENV=development \
-ADMIN_API_KEY=local-admin-key \
+HOST=127.0.0.1 \
+ADMIN_API_KEY=local-admin-key-1234 \
 SESSION_SECRET=local-session-secret-at-least-32-bytes \
 SESSION_COOKIE_SECURE=false \
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+go run ./cmd/server
 ```
+
+`APP_ENV=development` 下不设 `ADMIN_API_KEY` 时，服务会生成一个仅本次运行有效的随机密钥并打印在日志里；没有任何固定的默认密码。开发环境同样要求密钥至少 16 字符。
 
 ```bash
 cd frontend
@@ -182,7 +190,9 @@ curl -X POST https://radar.example.com/api/admin/sources \
 
 Bot 使用真实 Telegram `chat_id`，不再哈希。未公开的 Bot 消息只出现在 `/admin`。
 
-未知 `adapter` 返回 422。本轮管理 UI 仍以公开 URL 表单为主，Bot 以来源 API 配置即可。
+> **Go 版本现状**：只实现了 `telegram_public`。`adapter` 为其它值（含 `telegram_bot`）时返回 422；`groups.yaml` 里的 Bot 条目导入时会被跳过并在日志里提示。
+
+重复添加同一个频道返回 409，不会覆盖已有来源的名称、公开状态或启停。
 
 ## 配置
 
@@ -190,10 +200,17 @@ Bot 使用真实 Telegram `chat_id`，不再哈希。未公开的 Bot 消息只�
 
 | 变量 | 说明 |
 | --- | --- |
+| `APP_ENV` | `production`（默认）/ `staging` / `development` / `test`，不区分大小写；拼写错误会**拒绝启动**，不会退化成宽松模式 |
 | `ADMIN_API_KEY` | 管理登录密钥，生产必填且至少 16 字符 |
 | `SESSION_SECRET` | 会话 HMAC 密钥，生产至少 32 字节 |
-| `SESSION_COOKIE_SECURE` | 生产必须 `true` |
-| `TELEGRAM_BOT_TOKEN` | 可选。仅 Bot 来源需要 |
+| `SESSION_COOKIE_SECURE` | 生产必须 `true`；接受 `true/false/1/0/yes/no/on/off`，无法识别的值按 `true` 处理 |
+| `LOGIN_MAX_ATTEMPTS` / `LOGIN_WINDOW_SECONDS` | 每个客户端在窗口内最多失败登录次数（默认 5 次 / 900 秒），超过返回 429 + `Retry-After` |
+| `FEEDBACK_RATE_LIMIT` / `FEEDBACK_RATE_WINDOW_SECONDS` | 反馈提交限流（默认 5 次 / 60 秒） |
+| `HOST` / `PORT` | 监听地址（默认所有网卡，Docker 内需要）与端口 |
+| `TRUSTED_PROXIES` | 可信反向代理，逗号分隔的 IP / CIDR，或 `private`（默认）/ `loopback` / `none` |
+| `TIMEZONE` | 规则静默时段与"今日访问"的时区 |
+| `MEDIA_ALLOWED_HOSTS` / `MEDIA_MAX_BYTES` | 媒体缓存只下载这些域名（含子域）的 https 资源，单文件上限，默认 `telesco.pe,cdn-telegram.org` / 96 MiB |
+| `TELEGRAM_BOT_TOKEN` | Go 版本不使用（Bot 适配器未迁移），保留只为兼容旧 `.env` |
 | `CRAWL_INTERVAL_SECONDS` | 公开频道采集间隔 |
 
 数据库文件名保持 `data/telegram_forwarder.db`，不要改路径除非你同时改备份脚本。
@@ -205,6 +222,8 @@ Bot 使用真实 Telegram `chat_id`，不再哈希。未公开的 Bot 消息只�
 - 管理：列表**不加** `IN (sources.id)`。历史孤儿 `chat_id` 仍能在管理端看到
 - 公共媒体：缺失与未公开一律 **404**
 - 会话：`tg_session`，HttpOnly，SameSite=Strict，Path=/，登出后 token 立即作废（进程内 sid 表，重启需重新登录）
+- 媒体：公开端 `/api/public/media/*` 只服务启用且已公开来源的消息；管理端使用需要会话的 `/api/admin/media/*`。服务器只下载白名单 CDN 上的 https 资源，且有大小上限
+- 写操作：所有 `POST/PATCH/PUT/DELETE /api/*` 必须带与 `Host` 同源的 `Origin`，请求体必须是 `application/json` 且有大小上限
 
 ## 备份与升级
 

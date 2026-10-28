@@ -3,149 +3,191 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // embedded zone database, so TIMEZONE works on minimal images too
 
-	"github.com/go-chi/chi/v5"
-	chimw "github.com/go-chi/chi/v5/middleware"
 	"telegram-radar/internal/api"
 	"telegram-radar/internal/api/middleware"
 	"telegram-radar/internal/config"
 	"telegram-radar/internal/crawler"
 	"telegram-radar/internal/media"
 	"telegram-radar/internal/repository"
+	"telegram-radar/internal/safe"
 	"telegram-radar/internal/scheduler"
 )
 
 func main() {
-	log.Println("==================================================")
-	log.Println("🚀 Telegram 频道资讯平台 (Go 重构版本) 正在启动...")
-	log.Println("==================================================")
+	if err := run(); err != nil {
+		log.Fatalf("❌ %v", err)
+	}
+}
 
-	// 1. 加载配置
+func run() error {
+	log.Println("🚀 Telegram 频道资讯平台 (Go) 正在启动...")
+
+	// 1. 加载并校验配置。校验失败时拒绝启动，而不是退化成不安全的默认值。
 	cfg, err := config.LoadConfig(".env")
 	if err != nil {
-		log.Fatalf("配置加载失败: %v", err)
+		return fmt.Errorf("配置加载失败: %w", err)
 	}
-
-	if cfg.AppEnv == "production" {
-		if cfg.AdminAPIKey == "" {
-			log.Fatal("生产环境错误: ADMIN_API_KEY 必须配置")
-		}
-		if len(cfg.SessionSecret) < 16 {
-			log.Fatal("生产环境错误: SESSION_SECRET 长度不得小于 16 字节")
-		}
-	} else {
-		if cfg.AdminAPIKey == "" {
-			cfg.AdminAPIKey = "admin123"
-			log.Println("开发环境警告: ADMIN_API_KEY 为空，已使用默认密钥: admin123")
-		}
-		if cfg.SessionSecret == "" {
-			cfg.SessionSecret = "dev-secret-session-key-at-least-16-bytes"
-		}
+	for _, w := range cfg.Warnings {
+		log.Printf("⚠️ %s", w)
 	}
+	if key := cfg.FillDevelopmentDefaults(); key != "" {
+		log.Printf("⚠️ [%s] 未配置 ADMIN_API_KEY，已生成仅本次运行有效的临时管理密钥: %s", cfg.AppEnv, key)
+	}
+	if err := cfg.Validate(); err != nil {
+		return fmt.Errorf("配置校验失败: %w", err)
+	}
+	log.Printf("⚙️  环境=%s 时区=%s 采集间隔=%v 登录限流=%d 次/%v", cfg.AppEnv, cfg.Location, cfg.CrawlInterval, cfg.LoginMaxAttempts, cfg.LoginWindow)
 
 	// 2. 初始化数据库 (SQLite WAL 模式)
 	db, err := repository.InitDB(cfg.DatabasePath)
 	if err != nil {
-		log.Fatalf("数据库初始化失败 [%s]: %v", cfg.DatabasePath, err)
+		return fmt.Errorf("数据库初始化失败 [%s]: %w", cfg.DatabasePath, err)
 	}
 	defer db.Close()
 	log.Printf("✅ SQLite 数据库连接成功: %s", cfg.DatabasePath)
 
-	// 3. 仓储与领域服务实例化
+	// 3. 仓储与领域服务
 	sourceRepo := repository.NewSourceRepository(db)
 	msgRepo := repository.NewMessageRepository(db)
 	visitRepo := repository.NewVisitRepository(db)
 	feedbackRepo := repository.NewFeedbackRepository(db)
-	alertRepo := repository.NewAlertRepository(db)
+	alertRepo := repository.NewAlertRepository(db, cfg.Location)
 
-	mediaCache := media.NewMediaCache(cfg.MediaCacheDir)
-	telegramCrawler := crawler.NewTelegramCrawler(20 * time.Second)
+	seedSources(cfg, sourceRepo)
 
-	// 4. 初始化上下文与后台采集调度器
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	collector := scheduler.NewCollector(
-		sourceRepo,
-		msgRepo,
-		alertRepo,
-		telegramCrawler,
-		mediaCache,
-		cfg.CrawlInterval,
-	)
-
-	// 启动后台采集协程
-	go collector.Start(ctx)
-
-	// 5. 初始化 HTTP 路由与中间件
-	sessionMgr := middleware.NewSessionManager(cfg.SessionSecret, cfg.SessionTTL)
-	publicHandler := api.NewPublicHandler(cfg, sourceRepo, msgRepo, visitRepo, feedbackRepo, mediaCache)
-	adminHandler := api.NewAdminHandler(cfg, sessionMgr, sourceRepo, msgRepo, visitRepo, alertRepo, collector)
-
-	r := chi.NewRouter()
-
-	// 全局中间件链
-	r.Use(chimw.RequestID)
-	r.Use(chimw.RealIP)
-	r.Use(chimw.Logger)
-	r.Use(chimw.Recoverer)
-	r.Use(middleware.SecurityHeaders)
-	r.Use(middleware.SiteVisitAuditor(visitRepo))
-
-	// 注册公开接口与管理接口
-	publicHandler.RegisterRoutes(r)
-	adminHandler.RegisterRoutes(r)
-
-	// 挂载前端静态文件 (SPA)
-	if _, err := os.Stat("frontend/dist"); err == nil {
-		log.Println("📦 检测到前端构建目录 frontend/dist，已挂载 SPA 页面托管")
-		spaFS := os.DirFS("frontend/dist")
-		api.MountSPA(r, spaFS.(fs.FS))
-	} else {
-		log.Println("⚠️ 未检测到 frontend/dist 目录，前端页面可能无法直接访问")
-	}
-
-	// 6. 启动 HTTP 服务
-	addr := ":" + cfg.Port
-	server := &http.Server{
-		Addr:         addr,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-
-	go func() {
-		log.Printf("🌐 服务已在 http://127.0.0.1%s 启动就绪", addr)
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("HTTP 服务启动失败: %v", err)
+	mediaCache := media.New(cfg.MediaCacheDir, media.Options{
+		AllowedHosts: cfg.MediaAllowedHosts,
+		MaxBytes:     cfg.MediaMaxBytes,
+		Proxied:      proxyConfigured(),
+	})
+	safe.Go("media temp cleanup", func() {
+		if n := mediaCache.CleanTemp(time.Hour); n > 0 {
+			log.Printf("🧹 清理了 %d 个遗留的媒体临时文件", n)
 		}
-	}()
+	})
 
-	// 7. 优雅停机 (Graceful Shutdown)
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	sig := <-sigChan
+	collector := scheduler.NewCollector(sourceRepo, msgRepo, alertRepo,
+		crawler.NewTelegramCrawler(20*time.Second), mediaCache, cfg.CrawlInterval)
+	collector.Start()
 
-	log.Printf("🛑 接收到操作系统信号 [%v]，正在平滑关闭服务...", sig)
+	// 4. HTTP 路由
+	var static fs.FS
+	if info, err := os.Stat("frontend/dist"); err == nil && info.IsDir() {
+		log.Println("📦 检测到前端构建目录 frontend/dist，已挂载 SPA 页面托管")
+		static = os.DirFS("frontend/dist")
+	} else {
+		log.Println("⚠️ 未检测到 frontend/dist 目录，前端页面将无法访问（API 仍可用）")
+	}
+	handler, closeRouter := api.NewRouter(api.Deps{
+		Config:   cfg,
+		Sources:  sourceRepo,
+		Messages: msgRepo,
+		Visits:   visitRepo,
+		Feedback: feedbackRepo,
+		Alerts:   alertRepo,
+		Media:    mediaCache,
+		Crawls:   collector,
+		Sessions: middleware.NewSessionManager(cfg.SessionSecret, cfg.SessionTTL),
+		Static:   static,
+	})
 
-	// 通知后台采集协程停止
-	cancel()
+	server := &http.Server{
+		Addr:              net.JoinHostPort(cfg.Host, cfg.Port),
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      60 * time.Second, // media and crawl-now extend their own deadline
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    64 << 10,
+	}
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		collector.Shutdown(time.Second)
+		closeRouter()
+		return fmt.Errorf("监听 %s 失败: %w", server.Addr, err)
+	}
+	log.Printf("🌐 服务已就绪，监听 %s", describeListener(listener.Addr(), cfg.Host == ""))
 
-	// 限制 10 秒超时等待现有请求处理完成
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownCancel()
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(listener) }()
 
+	// 5. 优雅停机：先停接收请求，再等采集协程，最后才关闭数据库。
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	var result error
+	select {
+	case sig := <-stop:
+		log.Printf("🛑 接收到操作系统信号 [%v]，正在平滑关闭服务...", sig)
+	case err := <-serveErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			result = fmt.Errorf("HTTP 服务异常退出: %w", err)
+		}
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Printf("HTTP 服务停机异常: %v", err)
 	}
+	if !collector.Shutdown(10 * time.Second) {
+		log.Println("⚠️ 部分采集任务未能在 10 秒内结束")
+	}
+	closeRouter()
 
 	log.Println("👋 服务已安全关闭")
+	return result
+}
+
+// seedSources imports config/groups.yaml once, while the sources table is
+// still empty (see README).
+func seedSources(cfg *config.Config, repo *repository.SourceRepository) {
+	groups, err := config.LoadGroups(cfg.GroupsConfigPath)
+	if err != nil {
+		log.Printf("⚠️ 读取 %s 失败: %v", cfg.GroupsConfigPath, err)
+		return
+	}
+	if len(groups) == 0 {
+		return
+	}
+	created, skipped, err := repository.SeedSourcesFromGroups(repo, groups)
+	if err != nil {
+		log.Printf("⚠️ 从 %s 导入来源失败: %v", cfg.GroupsConfigPath, err)
+		return
+	}
+	if created > 0 {
+		log.Printf("🌱 已从 %s 导入 %d 个来源", cfg.GroupsConfigPath, created)
+	}
+	for _, s := range skipped {
+		log.Printf("⚠️ 跳过 %s 中的条目: %s", cfg.GroupsConfigPath, s)
+	}
+}
+
+// proxyConfigured reports whether outgoing requests to the media CDN go through
+// an HTTP proxy (HTTPS_PROXY and friends).
+func proxyConfigured() bool {
+	req, err := http.NewRequest(http.MethodGet, "https://cdn1.telesco.pe/", nil)
+	if err != nil {
+		return false
+	}
+	u, err := http.ProxyFromEnvironment(req)
+	return err == nil && u != nil
+}
+
+func describeListener(addr net.Addr, allInterfaces bool) string {
+	if allInterfaces {
+		return addr.String() + "（所有网卡；仅本机访问请设置 HOST=127.0.0.1，生产环境请置于反向代理之后）"
+	}
+	return addr.String()
 }
