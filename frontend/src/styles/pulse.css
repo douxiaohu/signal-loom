@@ -1,0 +1,186 @@
+/* ==========================================================================
+   频道脉搏概览带 + 氛围光
+   Token-driven only: every surface/text pair follows the active theme, same as
+   public.css. Reuses the `pulse-soft` keyframe already defined there.
+   ========================================================================== */
+
+/* ── 氛围光:随主题品牌色,极低透明度,位于内容之下 ─────────────────────── */
+.pub-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.pub-ambient::before,
+.pub-ambient::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+}
+.pub-ambient::before {
+  width: 60vw;
+  height: 60vw;
+  max-width: 720px;
+  max-height: 720px;
+  top: -22vw;
+  left: -6vw;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand-from) 26%, transparent), transparent 68%);
+}
+.pub-ambient::after {
+  width: 52vw;
+  height: 52vw;
+  max-width: 620px;
+  max-height: 620px;
+  top: -16vw;
+  right: -10vw;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand-to) 22%, transparent), transparent 68%);
+}
+
+/* ── 脉搏带 ───────────────────────────────────────────────────────────── */
+.pub-pulse {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px 28px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: var(--card-shadow);
+}
+.pub-pulse::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, var(--brand-from), var(--brand-to));
+}
+.pub-pulse::after {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  top: -180px;
+  left: -40px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand-from) 16%, transparent), transparent 70%);
+}
+
+.pub-pulse-lead {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pub-pulse-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--link);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.pub-pulse-eyebrow i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+.pub-pulse-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--text-strong);
+}
+.pub-pulse-sub {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+}
+
+.pub-pulse-stats {
+  display: flex;
+  gap: 26px;
+  margin: 0 0 0 auto;
+}
+.pub-pulse-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.pub-pulse-stat dt {
+  color: var(--soft-foreground);
+  font-size: 11px;
+  font-weight: 550;
+}
+.pub-pulse-stat dd {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.pub-pulse-stat dd em {
+  margin-left: 5px;
+  color: var(--ok);
+  font-size: 12px;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.pub-pulse-spark {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 24px;
+  border-left: 1px solid var(--border-soft);
+}
+.pub-pulse-spark-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 550;
+}
+.pub-pulse-spark-head span:last-child {
+  color: var(--soft-foreground);
+  font-family: var(--font-mono);
+}
+.pub-pulse-spark svg {
+  display: block;
+  width: 156px;
+  height: 40px;
+}
+
+@media (max-width: 1023px) {
+  .pub-pulse-spark { display: none; }
+  .pub-pulse-stats { margin-left: 0; }
+}
+@media (max-width: 640px) {
+  .pub-pulse { padding: 14px 16px; gap: 14px; }
+  .pub-pulse-stats { gap: 18px; }
+  .pub-pulse-stat dd { font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pub-pulse-eyebrow i { animation: none; }
+  .pub-card { transition: border-color 0.18s, box-shadow 0.18s; }
+  .pub-card:hover { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .pub-ambient { display: none; }
+}
