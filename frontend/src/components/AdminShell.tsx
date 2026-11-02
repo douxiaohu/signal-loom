@@ -24,6 +24,7 @@ type AdminShellProps = {
 export default function AdminShell({ view, onChangeView, onLogout, children }: AdminShellProps) {
   return (
     <div className="admin-app">
+      <div className="admin-ambient" aria-hidden="true" />
       <aside className="admin-sidebar">
         <div className="admin-brand">
           <strong><ShinyText text="管理中心" /></strong>

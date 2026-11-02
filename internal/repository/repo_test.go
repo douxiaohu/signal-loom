@@ -718,6 +718,55 @@ func TestVisitStatsRetentionAndTruncation(t *testing.T) {
 	}
 }
 
+func TestVisitDailyTrend(t *testing.T) {
+	db := newTestDB(t)
+	visits := NewVisitRepository(db)
+	shanghai, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Skip("tzdata unavailable")
+	}
+	insert := func(at, ip string) {
+		t.Helper()
+		if _, err := db.Exec(`INSERT INTO site_visits (visited_at, ip, path, method, user_agent, referer) VALUES (?, ?, '/', 'GET', '', '')`, at, ip); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Date(2026, 10, 28, 10, 0, 0, 0, time.UTC) // 18:00 in Shanghai
+	insert("2026-10-27T15:59:59Z", "1.1.1.1")             // 23:59:59 local 10-27
+	insert("2026-10-27T16:00:00Z", "2.2.2.2")             // 00:00:00 local 10-28
+	insert("2026-10-28T09:30:00.123456+00:00", "2.2.2.2") // 17:30 local 10-28, same IP
+	insert("2026-10-23T11:00:00Z", "4.4.4.4")             // 19:00 local 10-23
+	insert("2026-10-20T09:00:00Z", "3.3.3.3")             // 17:00 local 10-20, 8 days ago
+
+	trend, err := visits.DailyTrend(now, shanghai, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(trend) != 7 {
+		t.Fatalf("len(trend) = %d, want 7", len(trend))
+	}
+	if first := trend[0]; first.Date != "2026-10-22" || first.Count != 0 {
+		t.Fatalf("earliest point = %+v, want 2026-10-22 with count 0", first)
+	}
+	if d23 := trend[1]; d23.Date != "2026-10-23" || d23.Count != 1 || d23.Unique != 1 {
+		t.Fatalf("10-23 point = %+v, want count 1 unique 1", d23)
+	}
+	if d27 := trend[5]; d27.Date != "2026-10-27" || d27.Count != 1 {
+		t.Fatalf("10-27 point = %+v, want count 1", d27)
+	}
+	if today := trend[6]; today.Date != "2026-10-28" || today.Count != 2 || today.Unique != 1 {
+		t.Fatalf("today point = %+v, want 2026-10-28 count 2 unique 1", today)
+	}
+	// The visit from 8 days ago must fall outside the 7-day window.
+	total := 0
+	for _, p := range trend {
+		total += p.Count
+	}
+	if total != 4 {
+		t.Fatalf("total counted = %d, want 4 (the 10-20 visit is excluded)", total)
+	}
+}
+
 func TestTruncateKeepsValidUTF8(t *testing.T) {
 	s := strings.Repeat("频", 100) // 3 bytes per rune
 	for n := 1; n < 20; n++ {

@@ -506,6 +506,15 @@ type overviewAlerts struct {
 	EnabledRuleCount  int `json:"enabled_rule_count"`
 }
 
+// overviewVisits 在访问统计之上附带按天趋势序列，供后台「访问趋势」图使用。
+// 内嵌 SiteVisitStats 以提升其 JSON 字段，同时让该结构体保持可比较（无切片）。
+type overviewVisits struct {
+	model.SiteVisitStats
+	Trend []model.VisitTrendPoint `json:"trend"`
+}
+
+const overviewTrendDays = 7
+
 // Overview feeds the admin landing page. The shape is the contract of the
 // frontend's AdminOverview type.
 func (h *AdminHandler) Overview(w http.ResponseWriter, r *http.Request) {
@@ -515,6 +524,11 @@ func (h *AdminHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	visits, err := h.visits.GetStats(h.now(), h.cfg.Location)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	trend, err := h.visits.DailyTrend(h.now(), h.cfg.Location, overviewTrendDays)
 	if err != nil {
 		internalError(w, r, err)
 		return
@@ -538,7 +552,7 @@ func (h *AdminHandler) Overview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	RespondJSON(w, http.StatusOK, map[string]any{
-		"visits":  visits,
+		"visits":  overviewVisits{SiteVisitStats: visits, Trend: trend},
 		"sources": summary,
 		"alerts": overviewAlerts{
 			NewCount:          alerts.New,

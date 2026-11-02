@@ -25,4 +25,22 @@ describe("AdminOverview alert lifecycle", () => {
     expect(screen.getByLabelText("规则命中趋势")).toBeInTheDocument();
     expect(screen.getByText("2026-09-18")).toBeInTheDocument();
   });
+
+  it("draws the visits trend chart when the overview carries daily points", () => {
+    const base = data as unknown as { visits: Record<string, unknown> } & Record<string, unknown>;
+    const withTrend = {
+      ...base,
+      visits: {
+        ...base.visits,
+        trend: [
+          { date: "2026-10-27", count: 10, unique: 7 },
+          { date: "2026-10-28", count: 14, unique: 9 }
+        ]
+      }
+    } as never;
+    render(<AdminOverview data={withTrend} onOpen={vi.fn()} />);
+    expect(screen.getByText("访问趋势")).toBeInTheDocument();
+    expect(screen.getByLabelText("近 7 日独立访客趋势")).toBeInTheDocument();
+    expect(screen.getByText("10-28")).toBeInTheDocument();
+  });
 });
