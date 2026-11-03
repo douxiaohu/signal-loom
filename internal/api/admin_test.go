@@ -418,11 +418,22 @@ func TestOverviewMatchesTheFrontendContract(t *testing.T) {
 		t.Fatalf("top-level keys = %s", got)
 	}
 	visits := body["visits"].(map[string]any)
-	if got := fmt.Sprint(keysOf(visits)); got != "[last_24h last_7d_unique today today_unique total unique_ips]" {
+	if got := fmt.Sprint(keysOf(visits)); got != "[last_24h last_7d_unique today today_unique total trend unique_ips]" {
 		t.Fatalf("visits keys = %s (VisitStats in types.ts)", got)
 	}
 	if visits["total"] != float64(3) || visits["unique_ips"] != float64(2) || visits["today"] != float64(3) || visits["today_unique"] != float64(2) {
 		t.Fatalf("visit numbers: %v", visits)
+	}
+	trend, ok := visits["trend"].([]any)
+	if !ok || len(trend) != 7 {
+		t.Fatalf("visits.trend = %v (one point per recent day, for the frontend chart)", visits["trend"])
+	}
+	today := trend[len(trend)-1].(map[string]any)
+	if got := fmt.Sprint(keysOf(today)); got != "[count date unique]" {
+		t.Fatalf("trend point keys = %s (VisitTrendPoint in types.ts)", got)
+	}
+	if today["count"] != float64(3) || today["unique"] != float64(2) {
+		t.Fatalf("today trend point = %v (3 visits, 2 IPs recorded above)", today)
 	}
 	sources := body["sources"].(map[string]any)
 	if got := fmt.Sprint(keysOf(sources)); got != "[enabled items public total unhealthy]" {

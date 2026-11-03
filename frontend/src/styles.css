@@ -4,4 +4,5 @@
 @import "./styles/base.css";
 @import "./styles/feed.css";
 @import "./styles/public.css";
+@import "./styles/pulse.css";
 @import "./styles/admin.css";

@@ -128,6 +128,12 @@ export type VisitRecord = {
   referer: string;
 };
 
+export type VisitTrendPoint = {
+  date: string;
+  count: number;
+  unique: number;
+};
+
 export type VisitStats = {
   total: number;
   unique_ips: number;
@@ -135,6 +141,8 @@ export type VisitStats = {
   today_unique: number;
   last_24h: number;
   last_7d_unique: number;
+  /** One point per recent day, only on the admin overview (absent on the visits list). */
+  trend?: VisitTrendPoint[];
 };
 
 export type AdminOverview = {

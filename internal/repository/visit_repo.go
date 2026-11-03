@@ -74,6 +74,39 @@ func (r *VisitRepository) GetStats(now time.Time, loc *time.Location) (model.Sit
 	return s, err
 }
 
+// DailyTrend 返回最近 days 个自然日（按 loc 时区）的访问量序列，从最早到最近。
+// 每个点含当日访问次数与独立 IP 数；按日边界与 GetStats 一致，用 RFC3339 字符串比较。
+func (r *VisitRepository) DailyTrend(now time.Time, loc *time.Location, days int) ([]model.VisitTrendPoint, error) {
+	if loc == nil {
+		loc = time.UTC
+	}
+	if days <= 0 {
+		days = 7
+	}
+	local := now.In(loc)
+	todayStart := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, loc)
+
+	const layout = time.RFC3339
+	points := make([]model.VisitTrendPoint, 0, days)
+	for i := days - 1; i >= 0; i-- {
+		start := todayStart.AddDate(0, 0, -i)
+		end := start.AddDate(0, 0, 1)
+		var count, unique int
+		err := r.db.QueryRow(`
+			SELECT COUNT(*), COUNT(DISTINCT ip)
+			FROM site_visits
+			WHERE visited_at >= ? AND visited_at < ?`,
+			start.UTC().Format(layout),
+			end.UTC().Format(layout),
+		).Scan(&count, &unique)
+		if err != nil {
+			return nil, err
+		}
+		points = append(points, model.VisitTrendPoint{Date: start.Format("2006-01-02"), Count: count, Unique: unique})
+	}
+	return points, nil
+}
+
 // ListRecentVisits 获取最近访问列表（limit 1..500）。返回的切片永不为 nil。
 func (r *VisitRepository) ListRecentVisits(limit, offset int) ([]model.SiteVisit, error) {
 	if limit <= 0 {

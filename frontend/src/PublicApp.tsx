@@ -3,6 +3,7 @@ import { RadioTower, RefreshCw, Search, Terminal, Zap } from "lucide-react";
 
 import { fetchPublicMessages, fetchPublicSources } from "./public-api";
 import MessageFeed from "./components/MessageFeed";
+import ChannelPulse from "./components/ChannelPulse";
 import PublicSourceList from "./components/PublicSourceList";
 import { useMessageFeed, type FeedFetcher } from "./hooks/useMessageFeed";
 import { useUrlFilters } from "./hooks/useUrlFilters";
@@ -152,6 +153,7 @@ export default function PublicApp() {
   return (
     <div className="public-page">
       <a className="skip-link" href="#message-list">跳到消息列表</a>
+      <div className="pub-ambient" aria-hidden="true" />
       <header className="pub-header">
         <div className="pub-header-inner">
           <a className="pub-brand" href="/" aria-label="频道资讯首页">
@@ -190,6 +192,8 @@ export default function PublicApp() {
         <PublicSourceList activeChatId={filters.chatId} sources={sources} onSelect={selectSource} />
 
         <div className="pub-main">
+          <ChannelPulse sources={sources} messages={feed.messages} loading={feed.loading} />
+
           <div className="pub-toolbar">
             <div className="pub-segmented" role="group" aria-label="媒体类型">
               {publicMediaOptions.map((option) => {
