@@ -6,20 +6,27 @@ import { cleanMessageContent, formatDate, sourceHue } from "../utils";
  * no third-party dependency (the bundle budget rules out html-to-image). The card
  * leads with the post's own photo (served same-origin from the app's media cache,
  * so it never taints the canvas; a remote legacy URL fails cleanly and falls back
- * to a source-tinted cover). Every colour is read live from the active theme's CSS
- * tokens. Returns a PNG blob plus an object URL for preview and download.
+ * to a source-tinted cover), then shows the full text — body paragraphs and any
+ * quote blocks kept distinct, like the reading view. Colours are read live from
+ * the active theme's CSS tokens. Returns a PNG blob plus an object URL.
  */
 
 const TAG_RE = /#[\p{L}\p{N}_]+/gu;
 const URL_RE = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+const QUOTE_START_RE = /^[“"「『【]/;
 const NON_IMAGE_KINDS = ["video", "animation", "document", "file", "audio", "voice", "sticker"];
 
 const FONT =
   '"Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif';
 
-type ShareContent = { title: string; body: string[]; tags: string[] };
+type Block = { quote: boolean; text: string };
+type ShareContent = { title: string; blocks: Block[]; tags: string[] };
 
-/** A simplified take on RichContent: a leading headline, body paragraphs, and hashtags. */
+function isQuote(para: string): boolean {
+  return QUOTE_START_RE.test(para) || para.includes("转发自") || para.includes("据介绍") || para.includes("援引");
+}
+
+/** A simplified take on RichContent: a leading headline, body/quote blocks, and hashtags. */
 function extractContent(raw: string): ShareContent {
   const cleaned = cleanMessageContent(raw || "").replace(/\r\n/g, "\n");
   const tags = Array.from(new Set(cleaned.match(TAG_RE) || [])).slice(0, 4);
@@ -40,15 +47,15 @@ function extractContent(raw: string): ShareContent {
     )
     .filter(Boolean);
 
-  if (!paragraphs.length) return { title: "", body: [], tags };
+  if (!paragraphs.length) return { title: "", blocks: [], tags };
 
   const first = paragraphs[0];
-  const hasHeader = paragraphs.length > 1 && first.length >= 6 && first.length <= 95 && !first.startsWith("http");
+  const hasHeader = paragraphs.length > 1 && first.length >= 6 && first.length <= 95 && !first.startsWith("http") && !isQuote(first);
   const title = hasHeader ? first : "";
-  const body = (hasHeader ? paragraphs.slice(1) : paragraphs).filter(
-    (para) => !/^#[\p{L}\p{N}_]+(?:\s+#[\p{L}\p{N}_]+)*$/u.test(para)
-  );
-  return { title, body, tags };
+  const blocks = (hasHeader ? paragraphs.slice(1) : paragraphs)
+    .filter((para) => !/^#[\p{L}\p{N}_]+(?:\s+#[\p{L}\p{N}_]+)*$/u.test(para))
+    .map((para) => ({ quote: isQuote(para), text: para }));
+  return { title, blocks, tags };
 }
 
 /** The first still-image attachment, if any — used as the card's hero. */
@@ -164,6 +171,8 @@ export async function renderShareCard(message: Message): Promise<ShareCardResult
     strong: token("--text-strong", "#f7f9fc"),
     muted: token("--muted-foreground", "#9aa7ba"),
     soft: token("--soft-foreground", "#7d8ba0"),
+    secondaryFg: token("--secondary-foreground", "#cdd7e5"),
+    surfaceMuted: token("--surface-muted", "#182030"),
     border: token("--border", "#232c3c"),
     brandFrom: token("--brand-from", "#22d3ee"),
     brandTo: token("--brand-to", "#6366f1"),
@@ -174,7 +183,7 @@ export async function renderShareCard(message: Message): Promise<ShareCardResult
 
   const source = message.chat_title || "未知来源";
   const hue = sourceHue(String(message.chat_id ?? source));
-  const { title, body, tags } = extractContent(message.content);
+  const { title, blocks, tags } = extractContent(message.content);
   const hero = await loadHeroImage(message);
 
   try {
@@ -191,6 +200,8 @@ export async function renderShareCard(message: Message): Promise<ShareCardResult
   const PW = W - 2 * M;
   const PAD = 72;
   const CW = W - PAD * 2;
+  const QUOTE_INSET = 24;
+  const QUOTE_PAD_Y = 18;
   const coverH = hero ? 604 : 240;
   const titleFont = `650 50px ${FONT}`;
   const bodyFont = `400 32px ${FONT}`;
@@ -227,24 +238,33 @@ export async function renderShareCard(message: Message): Promise<ShareCardResult
   };
 
   const titleLines = title ? wrap(title, titleFont, CW, 3) : [];
-  const bodyMax = titleLines.length ? 4 : 6;
-  const bodyLines: string[] = [];
-  for (const para of body) {
-    if (bodyLines.length >= bodyMax) break;
-    bodyLines.push(...wrap(para, bodyFont, CW, bodyMax - bodyLines.length));
-    bodyLines.push("");
+
+  // Show the whole post: a generous line budget across all blocks, only
+  // ellipsizing a genuinely huge message.
+  const maxBodyLines = titleLines.length ? 13 : 17;
+  const rendered: Array<{ quote: boolean; lines: string[] }> = [];
+  let used = 0;
+  for (const block of blocks) {
+    if (used >= maxBodyLines) break;
+    const width = block.quote ? CW - QUOTE_INSET - 20 : CW;
+    const lines = wrap(block.text, bodyFont, width, maxBodyLines - used);
+    if (!lines.length) continue;
+    rendered.push({ quote: block.quote, lines });
+    used += lines.length;
   }
-  while (bodyLines.length && bodyLines[bodyLines.length - 1] === "") bodyLines.pop();
-  if (!titleLines.length && !bodyLines.length) {
-    bodyLines.push(...wrap(hero ? "查看原文了解更多" : `仅包含${message.media_type || "内容"}`, bodyFont, CW, 1));
+  if (!titleLines.length && !rendered.length) {
+    rendered.push({ quote: false, lines: wrap(hero ? "查看原文了解更多" : `仅包含${message.media_type || "内容"}`, bodyFont, CW, 1) });
   }
 
-  // Height: start below the cover, then the same advances the draw pass uses.
+  // Height: run the same advances the draw pass uses, then add the footer band.
   let yy = M + coverH + 40;
   if (titleLines.length) yy += 24 + titleLines.length * titleLineH + 16;
-  yy += bodyLines.reduce((h, line) => h + (line === "" ? 22 : bodyLineH), 0);
-  if (tags.length) yy += 16 + 44 + 10;
-  const H = Math.round(yy + 34 + 96 + M);
+  for (const blk of rendered) {
+    if (blk.quote) yy += blk.lines.length * bodyLineH + QUOTE_PAD_Y * 2 + 16;
+    else yy += blk.lines.length * bodyLineH + 14;
+  }
+  if (tags.length) yy += 18 + 44 + 8;
+  const H = Math.round(yy + 28 + 96 + M);
 
   const scale = 2;
   const canvas = document.createElement("canvas");
@@ -257,8 +277,8 @@ export async function renderShareCard(message: Message): Promise<ShareCardResult
   // ── Backdrop + ambient glow ─────────────────────────────────────────────
   ctx.fillStyle = C.bg;
   ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W * 0.12, H * 0.92, 0, W * 0.12, H * 0.92, W * 0.7);
-  glow.addColorStop(0, `hsla(${(hue + 40) % 360}, 72%, 52%, 0.14)`);
+  const glow = ctx.createRadialGradient(W * 0.12, H * 0.94, 0, W * 0.12, H * 0.94, W * 0.7);
+  glow.addColorStop(0, `hsla(${(hue + 40) % 360}, 72%, 52%, 0.12)`);
   glow.addColorStop(1, `hsla(${(hue + 40) % 360}, 72%, 52%, 0)`);
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
@@ -292,7 +312,6 @@ export async function renderShareCard(message: Message): Promise<ShareCardResult
     ctx.fillText(source.slice(0, 1).toUpperCase(), W - M - 36, M + coverH - 36);
     ctx.textAlign = "left";
   }
-  // bottom scrim so the source line stays legible over any photo
   const scrim = ctx.createLinearGradient(0, M + coverH - 240, 0, M + coverH);
   scrim.addColorStop(0, "rgba(6,10,18,0)");
   scrim.addColorStop(1, "rgba(6,10,18,0.74)");
@@ -346,19 +365,43 @@ export async function renderShareCard(message: Message): Promise<ShareCardResult
     y += 16;
   }
 
-  ctx.font = bodyFont;
-  ctx.fillStyle = C.fg;
-  for (const line of bodyLines) {
-    if (line === "") {
-      y += 22;
-      continue;
+  for (const blk of rendered) {
+    if (blk.quote) {
+      const bh = blk.lines.length * bodyLineH + QUOTE_PAD_Y * 2;
+      ctx.save();
+      roundRect(ctx, PAD, y, CW, bh, 14);
+      ctx.clip();
+      ctx.fillStyle = C.surfaceMuted;
+      ctx.fillRect(PAD, y, CW, bh);
+      const bar = ctx.createLinearGradient(PAD, y, PAD, y + bh);
+      bar.addColorStop(0, C.brandFrom);
+      bar.addColorStop(1, C.brandTo);
+      ctx.fillStyle = bar;
+      ctx.fillRect(PAD, y, 5, bh);
+      ctx.restore();
+      ctx.fillStyle = C.secondaryFg;
+      ctx.font = bodyFont;
+      ctx.textBaseline = "top";
+      let ty = y + QUOTE_PAD_Y;
+      for (const line of blk.lines) {
+        ctx.fillText(line, PAD + QUOTE_INSET, ty);
+        ty += bodyLineH;
+      }
+      y += bh + 16;
+    } else {
+      ctx.fillStyle = C.fg;
+      ctx.font = bodyFont;
+      ctx.textBaseline = "top";
+      for (const line of blk.lines) {
+        ctx.fillText(line, PAD, y);
+        y += bodyLineH;
+      }
+      y += 14;
     }
-    ctx.fillText(line, PAD, y);
-    y += bodyLineH;
   }
 
   if (tags.length) {
-    y += 16;
+    y += 4;
     let tx = PAD;
     const th = 44;
     const px = 20;
