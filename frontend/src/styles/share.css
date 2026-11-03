@@ -1,0 +1,127 @@
+/* ==========================================================================
+   分享卡片:触发按钮 + 预览弹窗
+   Token-driven, follows the active theme like the rest of the reading site.
+   ========================================================================== */
+.pub-share-trigger:hover { color: var(--link); }
+
+.pub-share-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: var(--bg-scrim);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  animation: share-fade 0.2s var(--ease-out);
+}
+@keyframes share-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes share-spin { to { transform: rotate(360deg); } }
+
+.pub-share-dialog {
+  width: min(520px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--popover);
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+
+.pub-share-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 12px 18px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.pub-share-heading { font-size: 14px; font-weight: 650; color: var(--text-strong); }
+.pub-share-tools { display: flex; align-items: center; gap: 8px; }
+
+.pub-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+.pub-share-btn svg { width: 15px; height: 15px; }
+.pub-share-btn:hover:not(:disabled) { border-color: var(--border-strong); background: var(--surface-hover); }
+.pub-share-btn:disabled { opacity: 0.5; cursor: default; }
+.pub-share-btn.is-done { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); }
+
+.pub-share-close {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+.pub-share-close:hover { color: var(--foreground); border-color: var(--border-strong); background: var(--surface-hover); }
+
+.pub-share-stage {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  overflow: auto;
+  background: var(--surface-muted);
+}
+.pub-share-image {
+  max-width: 100%;
+  max-height: 64vh;
+  width: auto;
+  height: auto;
+  border-radius: 14px;
+  box-shadow: 0 16px 40px -20px rgba(0, 0, 0, 0.6);
+}
+.pub-share-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 160px;
+  padding: 40px;
+  color: var(--muted-foreground);
+  font-size: 13.5px;
+}
+.pub-share-spinner {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--link);
+  animation: share-spin 0.8s linear infinite;
+}
+.pub-share-hint {
+  margin: 0;
+  padding: 11px 18px 13px;
+  border-top: 1px solid var(--border-soft);
+  color: var(--soft-foreground);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .pub-share-overlay { background: var(--background); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pub-share-overlay { animation: none; }
+  .pub-share-spinner { animation-duration: 1.6s; }
+}

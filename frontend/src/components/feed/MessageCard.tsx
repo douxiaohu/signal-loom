@@ -1,11 +1,12 @@
-import { memo } from "react";
-import { Check, Copy, ExternalLink, Link as LinkIcon, X } from "lucide-react";
+import { memo, useRef, useState } from "react";
+import { Check, Copy, ExternalLink, Link as LinkIcon, Sparkles, X } from "lucide-react";
 
 import { useCopyFeedback, type CopyState } from "../../hooks/useCopyFeedback";
 import type { Message } from "../../types";
 import { cleanMessageContent, formatTime, mediaLabel, sourceHue } from "../../utils";
 import RichContent from "../RichContent";
 import MediaGallery, { mediaItemsOf } from "./MediaGallery";
+import ShareCardModal from "./ShareCardModal";
 import type { FeedDensity, OpenImageHandler } from "./types";
 
 type MessageCardProps = {
@@ -18,6 +19,8 @@ type MessageCardProps = {
 function MessageCard({ density, message, onOpenImage, compact = false }: MessageCardProps) {
   const copyLink = useCopyFeedback();
   const copyBody = useCopyFeedback();
+  const [sharing, setSharing] = useState(false);
+  const shareRef = useRef<HTMLButtonElement>(null);
   const mediaItems = mediaItemsOf(message);
   const speaker = message.sender_name || "未知发送者";
   const source = message.chat_title || "未知来源";
@@ -26,6 +29,7 @@ function MessageCard({ density, message, onOpenImage, compact = false }: Message
   const cleanedContent = cleanMessageContent(message.content);
 
   return (
+    <>
     <article
       className={`pub-card message-card${density === "console" ? " is-console" : " is-reading"}${compact ? " is-nested" : ""}`}
       aria-labelledby={titleId}
@@ -60,6 +64,20 @@ function MessageCard({ density, message, onOpenImage, compact = false }: Message
         </div>
 
         <div className="pub-card-actions">
+          <button
+            type="button"
+            ref={shareRef}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSharing(true);
+            }}
+            title="生成分享卡片"
+            aria-label="生成分享卡片"
+            className="pub-share-trigger"
+          >
+            <Sparkles size={14} aria-hidden="true" />
+          </button>
+
           {cleanedContent && (
             <button
               type="button"
@@ -126,6 +144,10 @@ function MessageCard({ density, message, onOpenImage, compact = false }: Message
         </footer>
       ) : null}
     </article>
+    {sharing ? (
+      <ShareCardModal message={message} returnFocusRef={shareRef} onClose={() => setSharing(false)} />
+    ) : null}
+    </>
   );
 }
 

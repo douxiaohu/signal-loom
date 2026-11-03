@@ -37,6 +37,11 @@ describe("MessageCard", () => {
     Reflect.deleteProperty(navigator, "clipboard");
   });
 
+  it("offers a share-card button on every card", () => {
+    renderCard();
+    expect(screen.getByRole("button", { name: "生成分享卡片" })).toBeInTheDocument();
+  });
+
   it("copies the text and confirms it on the button", async () => {
     const user = userEvent.setup();
     const writeText = stubClipboard(vi.fn(async () => undefined));

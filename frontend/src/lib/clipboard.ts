@@ -15,6 +15,23 @@ export async function copyText(text: string): Promise<boolean> {
   return legacyCopy(text);
 }
 
+/**
+ * Copies an image blob to the clipboard. Image copy needs the async Clipboard
+ * API with ClipboardItem, which only exists on secure origins and can be denied,
+ * so a failure is an expected outcome the caller falls back to download for.
+ */
+export async function copyImage(blob: Blob): Promise<boolean> {
+  try {
+    if (navigator.clipboard && "write" in navigator.clipboard && typeof ClipboardItem !== "undefined") {
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      return true;
+    }
+  } catch {
+    // denied or unsupported
+  }
+  return false;
+}
+
 function legacyCopy(text: string): boolean {
   const area = document.createElement("textarea");
   area.value = text;
