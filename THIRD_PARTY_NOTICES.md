@@ -1,6 +1,6 @@
 # 第三方许可与归属
 
-项目自身的代码和文档采用根目录 [MIT 许可证](LICENSE)。第三方代码、字体及依赖继续适用各自的原始许可，项目 MIT 许可证不替代这些许可。
+项目自身的代码和文档采用根目录 [MIT 许可证](LICENSE)，许可文本也随前端发布到 [`/licenses/signal-loom-MIT.txt`](frontend/public/licenses/signal-loom-MIT.txt)。第三方代码、字体及依赖继续适用各自的原始许可，项目 MIT 许可证不替代这些许可。
 
 ## delineate
 

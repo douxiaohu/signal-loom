@@ -24,7 +24,7 @@ npm --prefix frontend run test:e2e
 Dependency checks:
 
 ```bash
-go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 npm --prefix frontend audit --audit-level=high
 bash scripts/install-gitleaks.sh
 /tmp/signal-loom-tools/gitleaks git --redact=100 --config .gitleaks.toml --log-opts="--all --full-history"
