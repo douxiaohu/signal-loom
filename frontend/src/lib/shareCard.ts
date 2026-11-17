@@ -1,460 +1,286 @@
-import type { Message } from "../types";
+import type { MediaItem, Message } from "../types";
 import { cleanMessageContent, formatDate, sourceHue } from "../utils";
 
-/**
- * Renders a message into a polished, theme-aware share image on a <canvas>, with
- * no third-party dependency (the bundle budget rules out html-to-image). The card
- * leads with the post's own photo (served same-origin from the app's media cache,
- * so it never taints the canvas; a remote legacy URL fails cleanly and falls back
- * to a source-tinted cover), then shows the full text — body paragraphs and any
- * quote blocks kept distinct, like the reading view. Colours are read live from
- * the active theme's CSS tokens. Returns a PNG blob plus an object URL.
- */
+const FONT = '"Geist Variable", system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif';
+const NON_IMAGES = new Set(["video", "animation", "document", "file", "audio", "voice", "sticker"]);
+const WIDTH = 1080;
+const PAGE_HEIGHT = 2600;
+const SCALE = 1.5;
+const PAD = 64;
+const CONTENT_WIDTH = WIDTH - PAD * 2;
+const FOOTER = 104;
+const BOTTOM = PAGE_HEIGHT - PAD - FOOTER;
+const BODY_FONT = `400 32px ${FONT}`;
+const BODY_LINE = 50;
+// Share PNGs must point to the public site even when generated from a local preview.
+const WEBSITE_URL = "https://douxiaohu.duckdns.org";
 
-const TAG_RE = /#[\p{L}\p{N}_]+/gu;
-const URL_RE = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
-const QUOTE_START_RE = /^[“"「『【]/;
-const NON_IMAGE_KINDS = ["video", "animation", "document", "file", "audio", "voice", "sticker"];
+export type ShareCardPage = { blob: Blob; url: string; width: number; height: number };
+export type ShareCardResult = { pages: ShareCardPage[]; imageCount: number; failedImages: number };
 
-const FONT =
-  '"Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif';
-
-type Block = { quote: boolean; text: string };
-type ShareContent = { title: string; blocks: Block[]; tags: string[] };
-
-function isQuote(para: string): boolean {
-  return QUOTE_START_RE.test(para) || para.includes("转发自") || para.includes("据介绍") || para.includes("援引");
-}
-
-/** A simplified take on RichContent: a leading headline, body/quote blocks, and hashtags. */
-function extractContent(raw: string): ShareContent {
-  const cleaned = cleanMessageContent(raw || "").replace(/\r\n/g, "\n");
-  const tags = Array.from(new Set(cleaned.match(TAG_RE) || [])).slice(0, 4);
-
-  const paragraphs = cleaned
-    .split(/\n\s*\n/)
-    .map((block) => block.split("\n").map((line) => line.trim()).filter(Boolean).join(""))
-    .map((para) =>
-      para
-        .replace(URL_RE, (match) => {
-          try {
-            return new URL(match).hostname.replace(/^www\./, "");
-          } catch {
-            return match;
-          }
-        })
-        .trim()
-    )
-    .filter(Boolean);
-
-  if (!paragraphs.length) return { title: "", blocks: [], tags };
-
-  const first = paragraphs[0];
-  const hasHeader = paragraphs.length > 1 && first.length >= 6 && first.length <= 95 && !first.startsWith("http") && !isQuote(first);
-  const title = hasHeader ? first : "";
-  const blocks = (hasHeader ? paragraphs.slice(1) : paragraphs)
-    .filter((para) => !/^#[\p{L}\p{N}_]+(?:\s+#[\p{L}\p{N}_]+)*$/u.test(para))
-    .map((para) => ({ quote: isQuote(para), text: para }));
-  return { title, blocks, tags };
-}
-
-/** The first still-image attachment, if any — used as the card's hero. */
-function firstImageUrl(message: Message): string | null {
-  const items = message.media_items?.length
-    ? message.media_items
-    : (message.media_urls || []).map((url) => ({ url, kind: message.media_type || "image", role: "media" }));
-  const messageType = (message.media_type || "").toLowerCase();
-  for (const item of items) {
+/** Every still photo, in attachment order. Originals take priority over thumbnails. */
+function imageItems(message: Message): MediaItem[] {
+  const items = message.media_items?.length ? message.media_items : (message.media_urls || []).map((url) => ({ url, kind: message.media_type || "image", role: "media" }));
+  return items.filter((item) => {
     const kind = (item.kind || "").toLowerCase();
-    if (["image", "photo"].includes(kind)) return item.url;
-    if (!NON_IMAGE_KINDS.includes(kind) && ["image", "photo"].includes(messageType)) return item.url;
-  }
-  return null;
+    return ["image", "photo"].includes(kind) || (!NON_IMAGES.has(kind) && ["image", "photo"].includes(message.media_type || ""));
+  });
 }
 
-/** Loads the hero image through CORS so the canvas stays exportable; a remote URL
- *  without CORS, or a slow one, resolves to null instead of tainting or hanging. */
-function loadHeroImage(message: Message): Promise<HTMLImageElement | null> {
-  const src = firstImageUrl(message);
-  if (!src) return Promise.resolve(null);
-  return new Promise((resolve) => {
+function abortIfNeeded(signal?: AbortSignal) {
+  if (signal?.aborted) throw new DOMException("Share rendering cancelled", "AbortError");
+}
+
+function loadImage(src: string, signal?: AbortSignal): Promise<HTMLImageElement | null> {
+  abortIfNeeded(signal);
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     let settled = false;
-    const finish = (value: HTMLImageElement | null) => {
-      if (!settled) {
-        settled = true;
-        resolve(value);
-      }
+    const finish = (value: HTMLImageElement | null, cancelled = false) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      signal?.removeEventListener("abort", cancel);
+      img.onload = img.onerror = null;
+      if (!value) img.src = "";
+      if (cancelled) reject(new DOMException("Share rendering cancelled", "AbortError"));
+      else resolve(value);
     };
-    img.onload = () => finish(img.naturalWidth > 0 ? img : null);
+    const cancel = () => finish(null, true);
+    const timeout = window.setTimeout(() => finish(null), 5000);
+    img.onload = () => finish(img.naturalWidth && img.naturalHeight ? img : null);
     img.onerror = () => finish(null);
-    window.setTimeout(() => finish(null), 6000);
+    signal?.addEventListener("abort", cancel, { once: true });
     img.src = src;
   });
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  const radius = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.arcTo(x + w, y, x + w, y + h, radius);
-  ctx.arcTo(x + w, y + h, x, y + h, radius);
-  ctx.arcTo(x, y + h, x, y, radius);
-  ctx.arcTo(x, y, x + w, y, radius);
-  ctx.closePath();
-}
-
-/** A path with rounded top corners and square bottom corners (for the cover). */
-function roundRectTop(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x, y + h);
-  ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r);
-  ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
-  ctx.lineTo(x + w, y + h);
-  ctx.closePath();
-}
-
-/** Draws an image into a box with object-fit: cover (centre crop). */
-function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
-  const imgRatio = img.naturalWidth / img.naturalHeight;
-  const boxRatio = w / h;
-  let sx = 0;
-  let sy = 0;
-  let sw = img.naturalWidth;
-  let sh = img.naturalHeight;
-  if (imgRatio > boxRatio) {
-    sw = sh * boxRatio;
-    sx = (img.naturalWidth - sw) / 2;
-  } else {
-    sh = sw / boxRatio;
-    sy = (img.naturalHeight - sh) / 2;
+async function loadAttachment(item: MediaItem, signal?: AbortSignal) {
+  for (const src of [...new Set([item.original_url, item.url].filter((value): value is string => Boolean(value)))]) {
+    const image = await loadImage(src, signal);
+    if (image) return image;
   }
-  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  return null;
 }
 
-function drawZap(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
-  const points = [
-    [13, 2],
-    [4.5, 13.5],
-    [11, 13.5],
-    [10, 22],
-    [19.5, 10],
-    [13, 10]
-  ];
-  const s = size / 26;
-  const ox = x + (size - 24 * s) / 2;
-  const oy = y + (size - 24 * s) / 2;
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  points.forEach(([px, py], i) => {
-    const X = ox + px * s;
-    const Y = oy + py * s;
-    if (i) ctx.lineTo(X, Y);
-    else ctx.moveTo(X, Y);
-  });
-  ctx.closePath();
-  ctx.fill();
+/** Real fonts determine every line; no body/title line budget and no ellipsized post. */
+function wrap(ctx: CanvasRenderingContext2D, text: string, font: string, width: number): string[] {
+  ctx.font = font;
+  const lines: string[] = [];
+  for (const paragraph of text.split("\n")) {
+    let line = "";
+    for (const char of Array.from(paragraph)) {
+      if (line && ctx.measureText(line + char).width > width) {
+        lines.push(line);
+        line = char;
+      } else line += char;
+    }
+    lines.push(line);
+  }
+  return lines;
 }
 
-export type ShareCardResult = { blob: Blob | null; url: string; width: number; height: number };
-
-export async function renderShareCard(message: Message): Promise<ShareCardResult> {
-  const root = getComputedStyle(document.documentElement);
-  const token = (name: string, fallback: string) => root.getPropertyValue(name).trim() || fallback;
-  const C = {
-    bg: token("--background", "#0b0f17"),
-    card: token("--card", "#111721"),
-    fg: token("--foreground", "#e6ebf3"),
-    strong: token("--text-strong", "#f7f9fc"),
-    muted: token("--muted-foreground", "#9aa7ba"),
-    soft: token("--soft-foreground", "#7d8ba0"),
-    secondaryFg: token("--secondary-foreground", "#cdd7e5"),
-    surfaceMuted: token("--surface-muted", "#182030"),
-    border: token("--border", "#232c3c"),
-    brandFrom: token("--brand-from", "#22d3ee"),
-    brandTo: token("--brand-to", "#6366f1"),
-    accent: token("--accent", "rgba(34,211,238,.12)"),
-    accentFg: token("--accent-foreground", "#67e8f9"),
-    markFg: token("--mark-foreground", "#041822")
+/** Renders bounded PNG pages. Paragraphs flow across pages and every photo is contained. */
+export async function renderShareCard(message: Message, { signal }: { signal?: AbortSignal } = {}): Promise<ShareCardResult> {
+  await document.fonts?.ready;
+  abortIfNeeded(signal);
+  const tokens = getComputedStyle(document.documentElement);
+  const color = (name: string, fallback: string) => tokens.getPropertyValue(name).trim() || fallback;
+  const palette = {
+    paper: color("--card", "#fcfbf7"), ink: color("--foreground", "#363930"),
+    title: color("--text-strong", "#292d25"), soft: color("--muted-foreground", "#62665a"),
+    rule: color("--border", "#dedfd4"), wash: color("--surface-muted", "#efefe5"),
+    accent: color("--link", "#526b44")
   };
-
   const source = message.chat_title || "未知来源";
-  const hue = sourceHue(String(message.chat_id ?? source));
-  const { title, blocks, tags } = extractContent(message.content);
-  const hero = await loadHeroImage(message);
+  const attachments = imageItems(message);
+  const hue = sourceHue(String(message.chat_id));
+  const measure = document.createElement("canvas").getContext("2d");
+  if (!measure) throw new Error("Canvas unavailable");
+  const nameFont = `600 34px ${FONT}`;
+  const sourceLines = wrap(measure, source, nameFont, CONTENT_WIDTH - 96);
+  const headerLines = sourceLines.slice(0, 2);
+  if (sourceLines.length > 2) headerLines[1] = headerLines[1].slice(0, -1) + "…";
+  const headerBottom = PAD + Math.max(72, headerLines.length * 44 + 32) + 26;
+  const contentTop = headerBottom + 36;
+  const pages: ShareCardPage[] = [];
+  let failedImages = 0;
+  let y = contentTop;
+
+  function newPage() {
+    const canvas = document.createElement("canvas");
+    canvas.width = WIDTH * SCALE;
+    canvas.height = PAGE_HEIGHT * SCALE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas unavailable");
+    ctx.scale(SCALE, SCALE);
+    ctx.fillStyle = palette.paper;
+    ctx.fillRect(0, 0, WIDTH, PAGE_HEIGHT);
+    ctx.fillStyle = `hsl(${hue} 30% 42%)`;
+    ctx.beginPath();
+    ctx.arc(PAD + 34, PAD + 36, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `600 30px ${FONT}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(Array.from(source)[0], PAD + 34, PAD + 36);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = palette.title;
+    ctx.font = nameFont;
+    headerLines.forEach((line, index) => ctx.fillText(line, PAD + 96, PAD + index * 44));
+    ctx.fillStyle = palette.soft;
+    ctx.font = `400 23px ${FONT}`;
+    ctx.fillText("Telegram 公开频道 · " + formatDate(message.message_time), PAD + 96, PAD + headerLines.length * 44 + 5);
+    ctx.fillStyle = palette.rule;
+    ctx.fillRect(PAD, headerBottom, CONTENT_WIDTH, 1);
+    return { canvas, ctx };
+  }
+
+  let page = newPage();
+  async function flush() {
+    abortIfNeeded(signal);
+    const height = Math.min(PAGE_HEIGHT, Math.ceil(y + FOOTER + PAD));
+    const fy = height - PAD - 68;
+    page.ctx.fillStyle = palette.rule;
+    page.ctx.fillRect(PAD, fy - 22, CONTENT_WIDTH, 1);
+    page.ctx.fillStyle = palette.accent;
+    page.ctx.font = `600 27px ${FONT}`;
+    page.ctx.textBaseline = "top";
+    page.ctx.textAlign = "left";
+    page.ctx.fillText("频道资讯", PAD, fy);
+    page.ctx.fillStyle = palette.soft;
+    page.ctx.font = `400 22px ${FONT}`;
+    page.ctx.fillText(WEBSITE_URL, PAD, fy + 36);
+    page.ctx.textAlign = "right";
+    page.ctx.fillText(`第 ${pages.length + 1} 页${attachments.length ? ` · ${attachments.length} 张图片` : ""}`, WIDTH - PAD, fy + 18);
+    // Crop only unused page space, never the source photo. Release raster memory per page.
+    const output = document.createElement("canvas");
+    output.width = page.canvas.width;
+    output.height = Math.ceil(height * SCALE);
+    const outputCtx = output.getContext("2d");
+    if (!outputCtx) throw new Error("Canvas unavailable");
+    outputCtx.drawImage(page.canvas, 0, 0);
+    page.canvas.width = page.canvas.height = 0;
+    const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, "image/png"));
+    output.width = output.height = 0;
+    abortIfNeeded(signal);
+    if (!blob) throw new Error("PNG generation failed");
+    pages.push({ blob, url: URL.createObjectURL(blob), width: WIDTH, height });
+  }
+  async function ensureRoom(height: number) {
+    if (y + height <= BOTTOM) return;
+    await flush();
+    page = newPage();
+    y = contentTop;
+  }
+  async function paragraph(text: string, heading = false) {
+    const quote = !heading && (/^[“"「『【]/.test(text) || text.includes("转发自"));
+    const font = heading ? `600 48px ${FONT}` : BODY_FONT;
+    const lineHeight = heading ? 68 : BODY_LINE;
+    const inset = quote ? 26 : 0;
+    const lines = wrap(measure!, text, font, CONTENT_WIDTH - inset * 2);
+    for (const line of lines) {
+      await ensureRoom(lineHeight + 10);
+      const ctx = page.ctx;
+      if (quote) {
+        ctx.fillStyle = palette.wash;
+        ctx.fillRect(PAD, y - 5, CONTENT_WIDTH, lineHeight + 10);
+        ctx.fillStyle = palette.accent;
+        ctx.fillRect(PAD, y - 5, 4, lineHeight + 10);
+      }
+      ctx.font = font;
+      ctx.fillStyle = heading ? palette.title : palette.ink;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText(line, PAD + inset, y);
+      y += lineHeight;
+    }
+    y += heading ? 24 : 20;
+  }
 
   try {
-    await (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts?.ready;
-  } catch {
-    // fonts.ready is best-effort; fall back to the default stack
-  }
-
-  const measureCtx = document.createElement("canvas").getContext("2d");
-  if (!measureCtx) throw new Error("canvas 2d context unavailable");
-
-  const W = 1080;
-  const M = 28;
-  const PW = W - 2 * M;
-  const PAD = 72;
-  const CW = W - PAD * 2;
-  const QUOTE_INSET = 24;
-  const QUOTE_PAD_Y = 18;
-  const coverH = hero ? 604 : 240;
-  const titleFont = `650 50px ${FONT}`;
-  const bodyFont = `400 32px ${FONT}`;
-  const titleLineH = 66;
-  const bodyLineH = 50;
-
-  const wrap = (text: string, font: string, maxWidth: number, maxLines: number): string[] => {
-    measureCtx.font = font;
-    const chars = Array.from(text);
-    const lines: string[] = [];
-    let line = "";
-    let truncated = false;
-    for (let i = 0; i < chars.length; i += 1) {
-      const next = line + chars[i];
-      if (measureCtx.measureText(next).width > maxWidth && line) {
-        lines.push(line);
-        line = chars[i];
-        if (lines.length >= maxLines) {
-          truncated = true;
-          break;
+    if (sourceLines.length > 2) await paragraph("来源：" + source);
+    const blocks = cleanMessageContent(message.content).replace(/\r\n/g, "\n").split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
+    for (const [index, text] of blocks.entries()) {
+      const heading = index === 0 && blocks.length > 1 && text.length <= 180 && !/^[“"「『【]|https?:\/\//.test(text);
+      await paragraph(text, heading);
+    }
+    if (!blocks.length && !attachments.length) await paragraph("仅包含媒体内容，请查看原文。");
+    // Load and draw one source at a time: a large album does not retain every decoded photo.
+    for (const [index, item] of attachments.entries()) {
+      abortIfNeeded(signal);
+      const image = await loadAttachment(item, signal);
+      try {
+        const limit = BOTTOM - contentTop - 58;
+        const idealHeight = image ? Math.min(image.naturalHeight * CONTENT_WIDTH / image.naturalWidth, limit) : 150;
+        if (BOTTOM - y - 58 < Math.min(600, idealHeight * 0.7)) await ensureRoom(idealHeight + 58);
+        const available = Math.floor(Math.min(limit, BOTTOM - y - 58));
+        const factor = image ? Math.min(CONTENT_WIDTH / image.naturalWidth, available / image.naturalHeight) : 1;
+        const width = image ? image.naturalWidth * factor : CONTENT_WIDTH;
+        const height = image ? image.naturalHeight * factor : 150;
+        await ensureRoom(height + 58);
+        page.ctx.font = `400 22px ${FONT}`;
+        page.ctx.fillStyle = palette.soft;
+        page.ctx.textAlign = "left";
+        page.ctx.textBaseline = "top";
+        page.ctx.fillText(`图片 ${index + 1} / ${attachments.length}`, PAD, y);
+        y += 36;
+        if (image) {
+          // Five-argument drawImage scales the complete image; there is no source crop.
+          page.ctx.drawImage(image, PAD + (CONTENT_WIDTH - width) / 2, y, width, height);
+        } else {
+          failedImages++;
+          page.ctx.fillStyle = palette.wash;
+          page.ctx.fillRect(PAD, y, CONTENT_WIDTH, height);
+          page.ctx.fillStyle = palette.soft;
+          page.ctx.font = BODY_FONT;
+          page.ctx.fillText(`图片 ${index + 1} 暂未加载，请查看原文`, PAD + 24, y + 50);
         }
-      } else {
-        line = next;
-      }
+        y += height + 22;
+      } finally { if (image) image.src = ""; }
     }
-    if (!truncated) {
-      if (line) lines.push(line);
-      return lines;
+    await flush();
+    return { pages, imageCount: attachments.length, failedImages };
+  } catch (error) {
+    page.canvas.width = page.canvas.height = 0;
+    pages.forEach(({ url }) => URL.revokeObjectURL(url));
+    throw error;
+  }
+}
+
+/** Uncompressed ZIP keeps all PNG pages in one browser download, without dependencies. */
+export async function packageSharePages(pages: ShareCardPage[]): Promise<Blob> {
+  const chunks: BlobPart[] = [];
+  const directory: BlobPart[] = [];
+  let offset = 0;
+  let directorySize = 0;
+  for (const [index, page] of pages.entries()) {
+    const bytes = new Uint8Array(await page.blob.arrayBuffer());
+    let crc = 0xffffffff;
+    for (const byte of bytes) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
     }
-    let last = lines[maxLines - 1] ?? "";
-    while (last && measureCtx.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1);
-    lines[maxLines - 1] = `${last}…`;
-    return lines;
-  };
-
-  const titleLines = title ? wrap(title, titleFont, CW, 3) : [];
-
-  // Show the whole post: a generous line budget across all blocks, only
-  // ellipsizing a genuinely huge message.
-  const maxBodyLines = titleLines.length ? 13 : 17;
-  const rendered: Array<{ quote: boolean; lines: string[] }> = [];
-  let used = 0;
-  for (const block of blocks) {
-    if (used >= maxBodyLines) break;
-    const width = block.quote ? CW - QUOTE_INSET - 20 : CW;
-    const lines = wrap(block.text, bodyFont, width, maxBodyLines - used);
-    if (!lines.length) continue;
-    rendered.push({ quote: block.quote, lines });
-    used += lines.length;
+    crc = (crc ^ 0xffffffff) >>> 0;
+    const name = new TextEncoder().encode(`card-${String(index + 1).padStart(2, "0")}.png`);
+    const local = new ArrayBuffer(30);
+    const view = new DataView(local);
+    view.setUint32(0, 0x04034b50, true); view.setUint16(4, 20, true);
+    view.setUint32(14, crc, true); view.setUint32(18, bytes.length, true); view.setUint32(22, bytes.length, true); view.setUint16(26, name.length, true);
+    chunks.push(local, name, page.blob);
+    const central = new ArrayBuffer(46);
+    const cv = new DataView(central);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint32(16, crc, true); cv.setUint32(20, bytes.length, true); cv.setUint32(24, bytes.length, true); cv.setUint16(28, name.length, true); cv.setUint32(42, offset, true);
+    directory.push(central, name);
+    directorySize += 46 + name.length;
+    offset += 30 + name.length + bytes.length;
   }
-  if (!titleLines.length && !rendered.length) {
-    rendered.push({ quote: false, lines: wrap(hero ? "查看原文了解更多" : `仅包含${message.media_type || "内容"}`, bodyFont, CW, 1) });
-  }
-
-  // Height: run the same advances the draw pass uses, then add the footer band.
-  let yy = M + coverH + 40;
-  if (titleLines.length) yy += 24 + titleLines.length * titleLineH + 16;
-  for (const blk of rendered) {
-    if (blk.quote) yy += blk.lines.length * bodyLineH + QUOTE_PAD_Y * 2 + 16;
-    else yy += blk.lines.length * bodyLineH + 14;
-  }
-  if (tags.length) yy += 18 + 44 + 8;
-  const H = Math.round(yy + 28 + 96 + M);
-
-  const scale = 2;
-  const canvas = document.createElement("canvas");
-  canvas.width = W * scale;
-  canvas.height = H * scale;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("canvas 2d context unavailable");
-  ctx.scale(scale, scale);
-
-  // ── Backdrop + ambient glow ─────────────────────────────────────────────
-  ctx.fillStyle = C.bg;
-  ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W * 0.12, H * 0.94, 0, W * 0.12, H * 0.94, W * 0.7);
-  glow.addColorStop(0, `hsla(${(hue + 40) % 360}, 72%, 52%, 0.12)`);
-  glow.addColorStop(1, `hsla(${(hue + 40) % 360}, 72%, 52%, 0)`);
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-
-  // ── Panel ───────────────────────────────────────────────────────────────
-  roundRect(ctx, M, M, PW, H - 2 * M, 40);
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.35)";
-  ctx.shadowBlur = 48;
-  ctx.shadowOffsetY = 24;
-  ctx.fillStyle = C.card;
-  ctx.fill();
-  ctx.restore();
-
-  // ── Cover: the hero photo, or a source-tinted gradient ──────────────────
-  ctx.save();
-  roundRectTop(ctx, M, M, PW, coverH, 40);
-  ctx.clip();
-  if (hero) {
-    drawCover(ctx, hero, M, M, PW, coverH);
-  } else {
-    const cover = ctx.createLinearGradient(M, M, M + PW, M + coverH);
-    cover.addColorStop(0, `hsl(${hue}, 58%, 42%)`);
-    cover.addColorStop(1, `hsl(${(hue + 46) % 360}, 60%, 30%)`);
-    ctx.fillStyle = cover;
-    ctx.fillRect(M, M, PW, coverH);
-    ctx.fillStyle = "rgba(255,255,255,0.10)";
-    ctx.font = `700 230px ${FONT}`;
-    ctx.textAlign = "right";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(source.slice(0, 1).toUpperCase(), W - M - 36, M + coverH - 36);
-    ctx.textAlign = "left";
-  }
-  const scrim = ctx.createLinearGradient(0, M + coverH - 240, 0, M + coverH);
-  scrim.addColorStop(0, "rgba(6,10,18,0)");
-  scrim.addColorStop(1, "rgba(6,10,18,0.74)");
-  ctx.fillStyle = scrim;
-  ctx.fillRect(M, M + coverH - 240, PW, 240);
-  ctx.restore();
-
-  // ── Source identity, overlaid on the cover ──────────────────────────────
-  const idY = M + coverH - 96;
-  const AV = 64;
-  roundRect(ctx, PAD, idY, AV, AV, 16);
-  const avatar = ctx.createLinearGradient(PAD, idY, PAD + AV, idY + AV);
-  avatar.addColorStop(0, `hsl(${hue}, 60%, 50%)`);
-  avatar.addColorStop(1, `hsl(${(hue + 42) % 360}, 60%, 36%)`);
-  ctx.fillStyle = avatar;
-  ctx.fill();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = `700 32px ${FONT}`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(source.slice(0, 1).toUpperCase(), PAD + AV / 2, idY + AV / 2 + 2);
-
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "#ffffff";
-  ctx.font = `650 36px ${FONT}`;
-  const [nameLine] = wrap(source, `650 36px ${FONT}`, CW - AV - 22, 1);
-  ctx.fillText(nameLine || source, PAD + AV + 20, idY + 26);
-  ctx.fillStyle = "rgba(255,255,255,0.82)";
-  ctx.font = `400 23px ${FONT}`;
-  ctx.fillText("Telegram 公开频道 · 频道资讯", PAD + AV + 20, idY + 56);
-
-  // ── Content ─────────────────────────────────────────────────────────────
-  ctx.textBaseline = "top";
-  let y = M + coverH + 40;
-
-  if (titleLines.length) {
-    roundRect(ctx, PAD, y, 56, 6, 3);
-    const kicker = ctx.createLinearGradient(PAD, y, PAD + 56, y);
-    kicker.addColorStop(0, C.brandFrom);
-    kicker.addColorStop(1, C.brandTo);
-    ctx.fillStyle = kicker;
-    ctx.fill();
-    y += 24;
-    ctx.fillStyle = C.strong;
-    ctx.font = titleFont;
-    for (const line of titleLines) {
-      ctx.fillText(line, PAD, y);
-      y += titleLineH;
-    }
-    y += 16;
-  }
-
-  for (const blk of rendered) {
-    if (blk.quote) {
-      const bh = blk.lines.length * bodyLineH + QUOTE_PAD_Y * 2;
-      ctx.save();
-      roundRect(ctx, PAD, y, CW, bh, 14);
-      ctx.clip();
-      ctx.fillStyle = C.surfaceMuted;
-      ctx.fillRect(PAD, y, CW, bh);
-      const bar = ctx.createLinearGradient(PAD, y, PAD, y + bh);
-      bar.addColorStop(0, C.brandFrom);
-      bar.addColorStop(1, C.brandTo);
-      ctx.fillStyle = bar;
-      ctx.fillRect(PAD, y, 5, bh);
-      ctx.restore();
-      ctx.fillStyle = C.secondaryFg;
-      ctx.font = bodyFont;
-      ctx.textBaseline = "top";
-      let ty = y + QUOTE_PAD_Y;
-      for (const line of blk.lines) {
-        ctx.fillText(line, PAD + QUOTE_INSET, ty);
-        ty += bodyLineH;
-      }
-      y += bh + 16;
-    } else {
-      ctx.fillStyle = C.fg;
-      ctx.font = bodyFont;
-      ctx.textBaseline = "top";
-      for (const line of blk.lines) {
-        ctx.fillText(line, PAD, y);
-        y += bodyLineH;
-      }
-      y += 14;
-    }
-  }
-
-  if (tags.length) {
-    y += 4;
-    let tx = PAD;
-    const th = 44;
-    const px = 20;
-    const gap = 12;
-    ctx.font = `550 25px ${FONT}`;
-    for (const tag of tags) {
-      const tw = ctx.measureText(tag).width + px * 2;
-      if (tx + tw > W - PAD) break;
-      roundRect(ctx, tx, y, tw, th, 22);
-      ctx.fillStyle = C.accent;
-      ctx.fill();
-      ctx.fillStyle = C.accentFg;
-      ctx.textBaseline = "middle";
-      ctx.fillText(tag, tx + px, y + th / 2 + 1);
-      ctx.textBaseline = "top";
-      tx += tw + gap;
-    }
-  }
-
-  // ── Footer ──────────────────────────────────────────────────────────────
-  const fy = H - M - 86;
-  ctx.strokeStyle = C.border;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(PAD, fy);
-  ctx.lineTo(W - PAD, fy);
-  ctx.stroke();
-
-  const LM = 46;
-  const ly = fy + 24;
-  roundRect(ctx, PAD, ly, LM, LM, 14);
-  const logo = ctx.createLinearGradient(PAD, ly, PAD + LM, ly + LM);
-  logo.addColorStop(0, C.brandFrom);
-  logo.addColorStop(1, C.brandTo);
-  ctx.fillStyle = logo;
-  ctx.fill();
-  drawZap(ctx, PAD, ly, LM, C.markFg);
-
-  ctx.textBaseline = "top";
-  ctx.fillStyle = C.strong;
-  ctx.font = `650 27px ${FONT}`;
-  ctx.fillText("频道资讯", PAD + LM + 18, ly + 2);
-  ctx.fillStyle = C.soft;
-  ctx.font = `400 22px ${FONT}`;
-  ctx.fillText("douxiaohu.duckdns.org", PAD + LM + 18, ly + 33);
-
-  ctx.textAlign = "right";
-  ctx.fillStyle = C.soft;
-  ctx.font = `400 24px ${FONT}`;
-  ctx.fillText(formatDate(message.message_time), W - PAD, ly + 14);
-  ctx.textAlign = "left";
-
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-  const url = blob ? URL.createObjectURL(blob) : canvas.toDataURL("image/png");
-  return { blob, url, width: W, height: H };
+  const end = new ArrayBuffer(22);
+  const ev = new DataView(end);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, pages.length, true); ev.setUint16(10, pages.length, true); ev.setUint32(12, directorySize, true); ev.setUint32(16, offset, true);
+  return new Blob([...chunks, ...directory, end], { type: "application/zip" });
 }

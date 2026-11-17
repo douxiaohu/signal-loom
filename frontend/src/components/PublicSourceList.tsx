@@ -26,7 +26,7 @@ export default function PublicSourceList({ activeChatId, sources, onSelect }: Pu
   const totalMessages = sources.reduce((sum, source) => sum + (source.message_count || 0), 0);
 
   return (
-    <aside className="pub-rail" aria-label="公开来源">
+    <aside className="pub-rail" aria-label="公开来源" id="sources">
       <div className="pub-rail-head">
         <h2 className="pub-rail-title">
           <Layers size={14} aria-hidden="true" />

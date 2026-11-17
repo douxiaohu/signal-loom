@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from "react";
+import { Moon, Sun } from "lucide-react";
 
 import { safeStorage } from "./lib/storage";
 
@@ -39,10 +40,16 @@ function setTheme(theme: ThemeId) {
   window.dispatchEvent(new CustomEvent<ThemeId>(themeEvent, { detail: theme }));
 }
 
-function useStoredTheme(): ThemeId {
-  const [theme, setState] = useState<ThemeId>(readTheme);
+/** New public readers start on warm paper; saved choices and the console default survive. */
+export function initializePublicTheme() {
+  if (!isThemeId(safeStorage.get(storageKey))) applyTheme("paper");
+}
+
+export function useStoredTheme(): ThemeId {
+  const currentTheme = () => isThemeId(document.documentElement.dataset.theme) ? document.documentElement.dataset.theme : readTheme();
+  const [theme, setState] = useState<ThemeId>(currentTheme);
   useEffect(() => {
-    applyTheme(readTheme());
+    applyTheme(currentTheme());
     const sync = (event: Event) => {
       const detail = (event as CustomEvent<ThemeId>).detail;
       setState(isThemeId(detail) ? detail : readTheme());
@@ -51,6 +58,17 @@ function useStoredTheme(): ThemeId {
     return () => window.removeEventListener(themeEvent, sync);
   }, []);
   return theme;
+}
+
+export function ReadingLightSwitch() {
+  const theme = useStoredTheme();
+  const night = theme !== "paper";
+  return (
+    <button className="reading-light" type="button" aria-label={night ? "切换到日间" : "切换到夜间"} aria-pressed={night} onClick={() => setTheme(night ? "paper" : "midnight")}>
+      {night ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
+      <span>{night ? "夜间" : "日间"}</span>
+    </button>
+  );
 }
 
 applyTheme(readTheme());

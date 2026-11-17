@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { RadioTower, RefreshCw, Search, Terminal, Zap } from "lucide-react";
+import { ArrowUpRight, Flower2, RadioTower, RefreshCw, Search } from "lucide-react";
 
 import { fetchPublicMessages, fetchPublicSources } from "./public-api";
 import MessageFeed from "./components/MessageFeed";
@@ -9,7 +9,9 @@ import { useMessageFeed, type FeedFetcher } from "./hooks/useMessageFeed";
 import { useUrlFilters } from "./hooks/useUrlFilters";
 import { ApiError } from "./lib/http";
 import { filtersToParams, parseFilters, withSearch } from "./lib/filters";
-import { ThemeSwitcher } from "./theme";
+import { ReadingLightSwitch } from "./theme";
+import AssemblyIntro from "./components/editorial/AssemblyIntro";
+import LandscapeFooter from "./components/editorial/LandscapeFooter";
 import type { Filters, MediaFilter, PublicSource } from "./types";
 import { mediaOptions } from "./utils";
 
@@ -153,20 +155,19 @@ export default function PublicApp() {
   return (
     <div className="public-page">
       <a className="skip-link" href="#message-list">跳到消息列表</a>
-      <div className="pub-ambient" aria-hidden="true" />
       <header className="pub-header">
         <div className="pub-header-inner">
           <a className="pub-brand" href="/" aria-label="频道资讯首页">
             <span className="pub-brand-mark" aria-hidden="true">
-              <Zap size={18} strokeWidth={2.4} />
+              <Flower2 size={27} strokeWidth={1.25} />
             </span>
             <span className="pub-brand-copy">
               <h1 className="pub-brand-name">频道资讯</h1>
-              <span className="pub-brand-badge">TELEGRAM</span>
+              <span className="pub-brand-badge">the daily signal</span>
             </span>
           </a>
 
-          {searchField("desktop")}
+          <nav className="pub-header-nav" aria-label="主导航"><a href="#reading">资讯</a><a href="#sources">来源</a><a href="#about">关于</a></nav>
 
           <div className="pub-header-actions">
             <button
@@ -178,22 +179,25 @@ export default function PublicApp() {
             >
               <RefreshCw aria-hidden="true" />
             </button>
-            <ThemeSwitcher />
+            <ReadingLightSwitch />
             <a href="/admin" className="pub-header-link">
-              <Terminal aria-hidden="true" />
               <span>管理中心</span>
+              <ArrowUpRight aria-hidden="true" />
             </a>
           </div>
         </div>
-        <div className="pub-header-search-row">{searchField("mobile")}</div>
       </header>
 
+      <div className="editorial-wrap"><AssemblyIntro /></div>
+
+      <section className="reading-section editorial-wrap" id="reading" aria-label="频道资讯阅读区">
+      <div className="reading-head"><div><span className="reading-kicker">THE READING ROOM</span><h2>此刻，值得一读<span>每一个声音，都有来处。</span></h2></div>{searchField("desktop")}</div>
+      <div className="pub-header-search-row">{searchField("mobile")}</div>
+      <ChannelPulse sources={sources} messages={feed.messages} loading={feed.loading} />
       <div className="pub-layout">
         <PublicSourceList activeChatId={filters.chatId} sources={sources} onSelect={selectSource} />
 
         <div className="pub-main">
-          <ChannelPulse sources={sources} messages={feed.messages} loading={feed.loading} />
-
           <div className="pub-toolbar">
             <div className="pub-segmented" role="group" aria-label="媒体类型">
               {publicMediaOptions.map((option) => {
@@ -250,6 +254,8 @@ export default function PublicApp() {
           />
         </div>
       </div>
+      </section>
+      <LandscapeFooter />
     </div>
   );
 }

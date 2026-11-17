@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Check, Copy, ExternalLink, Link as LinkIcon, Sparkles, X } from "lucide-react";
 
 import { useCopyFeedback, type CopyState } from "../../hooks/useCopyFeedback";
@@ -21,6 +21,7 @@ function MessageCard({ density, message, onOpenImage, compact = false }: Message
   const copyBody = useCopyFeedback();
   const [sharing, setSharing] = useState(false);
   const shareRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
   const mediaItems = mediaItemsOf(message);
   const speaker = message.sender_name || "未知发送者";
   const source = message.chat_title || "未知来源";
@@ -28,9 +29,21 @@ function MessageCard({ density, message, onOpenImage, compact = false }: Message
   const markHue = sourceHue(`${message.chat_id ?? source}`);
   const cleanedContent = cleanMessageContent(message.content);
 
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card || density !== "reading" || !window.IntersectionObserver || !window.matchMedia || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let disposed = false;
+    let stop = () => {};
+    void import("../editorial/assembly-runtime").then(({ mountMessageAssembly }) => {
+      if (!disposed) stop = mountMessageAssembly(card, String(message.id), `${message.message_time}:${message.content}`);
+    }).catch(() => { /* Reading stays complete if the optional animation cannot load. */ });
+    return () => { disposed = true; stop(); };
+  }, [density, message]);
+
   return (
     <>
     <article
+      ref={cardRef}
       className={`pub-card message-card${density === "console" ? " is-console" : " is-reading"}${compact ? " is-nested" : ""}`}
       aria-labelledby={titleId}
     >

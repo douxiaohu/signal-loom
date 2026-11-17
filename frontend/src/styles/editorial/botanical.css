@@ -1,0 +1,55 @@
+/* Garden paint © 2026 appautomaton, MIT. */
+/* Watercolor glazes: the base color (or --pc), shifted per shape by --dl, --dh, --dc. */
+.botanical .wash {
+  fill: oklch(from var(--pc, var(--leaf)) calc(l + var(--dl, 0)) calc(c * var(--dc, 1)) calc(h + var(--dh, 0)));
+  fill-opacity: 0.8;
+  stroke: oklch(from var(--pc, var(--leaf)) calc(l + var(--dl, 0) - 0.2) calc(c * var(--dc, 1)) calc(h + var(--dh, 0) + 6));
+  stroke-opacity: 0.32;
+  stroke-width: calc(0.7 * var(--k));
+}
+.botanical .wash.deep { fill: oklch(from var(--pc, var(--leaf)) calc(l + var(--dl, 0) - 0.22) calc(c * var(--dc, 1)) calc(h + var(--dh, 0) + 12)); fill-opacity: 0.26; stroke: none; }
+.botanical .wash.stem, .botanical .wash.band, .botanical .wash.lime, .botanical .wash.heart, .botanical .wash.blush, .botanical .wash.green-cap, .botanical .wash.keel, .botanical .wash.petal, .botanical .wash.lilac-flush, .botanical .wash.anther, .botanical .wash.filament, .botanical .wash.water-edge { stroke: none; }
+.botanical .wash.stem { fill-opacity: 0.7; }
+.botanical .wash.band { fill: oklch(from var(--leaf) calc(l + 0.3) calc(c * 0.4) calc(h - 10)); fill-opacity: 0.75; }
+.botanical .wash.felt { fill-opacity: 0.72; }
+.botanical .wash.lime { fill-opacity: 0.7; }
+.botanical .wash.shine { fill: #fff; fill-opacity: 0.22; stroke: none; }
+.botanical .wash.keel { fill: oklch(from var(--spathe) calc(l - 0.14) calc(c * 1.1) calc(h + 18)); fill-opacity: 0.35; }
+.botanical .wash.heart { fill-opacity: 0.7; }
+.botanical .wash.bark { fill-opacity: 1; stroke: none; }
+.botanical .wash.bark-shade { fill: oklch(from var(--pc) calc(l - 0.14) c h); fill-opacity: 0.45; stroke: none; }
+.botanical .wash.bark-lit { fill: #fff; fill-opacity: 0.18; stroke: none; }
+.botanical .wash.blush { fill-opacity: 0.45; }
+.botanical .wash.green-cap { fill-opacity: 0.55; }
+.botanical .wash.petal { fill-opacity: 0.95; }
+.botanical .wash.lilac-flush { fill-opacity: 0.24; }
+.botanical .wash.lilac-flush.deep { fill: oklch(from var(--pc) calc(l - 0.16) calc(c * 1.5) h); fill-opacity: 0.4; }
+.botanical .wash.anther { fill-opacity: 0.9; }
+.botanical .wash.fruit:not(.deep) { fill-opacity: 0.96; }
+.botanical .wash.filament { fill-opacity: 0.95; }
+.botanical .wash.water-edge { fill: var(--water-tint); fill-opacity: 0.34; }
+.botanical .wash.needles { fill: none; stroke: oklch(from var(--leaf) calc(l + var(--dl, 0)) calc(c * var(--dc, 1)) calc(h + var(--dh, 0))); stroke-width: calc(1.8 * var(--k)); stroke-linecap: round; stroke-opacity: 0.85; }
+.botanical .vein-band { fill: none; stroke: oklch(from var(--leaf) calc(l + 0.5) calc(c * 0.4) h); stroke-width: 4; stroke-linecap: round; stroke-opacity: 0.85; }
+
+/* Ink: one pen, light on the lit edge and heavy on the shadow side. Widths are CSS pixels at
+   any plant size: main.ts sets --k, the drawing units per pixel, on each plant. Faint lines
+   use stroke-opacity, which needs no compositing group of its own. */
+.botanical .ink { fill: none; stroke: var(--garden-ink); stroke-linecap: round; stroke-linejoin: round; }
+.botanical .ink.hair { stroke-width: calc(0.45 * var(--k)); stroke-opacity: 0.75; }
+.botanical .ink.vein { stroke-opacity: 0.5; }
+.botanical .ink.thin { stroke-width: calc(0.8 * var(--k)); }
+.botanical .ink.mid { stroke-width: calc(1.1 * var(--k)); }
+.botanical .ink.thick { stroke-width: calc(1.6 * var(--k)); }
+.botanical .ink.dots { stroke-width: calc(1.6 * var(--k)); stroke-opacity: 0.5; }
+.botanical .ink.root { stroke-opacity: 0.8; }
+.botanical .ink.bark-tex { stroke-opacity: 0.4; }
+.botanical .ink.bumps { stroke-opacity: 0.45; }
+.botanical .ink.petal-edge { stroke-opacity: 0.6; }
+.botanical .ink.petal-vein { stroke: var(--petal-vein); stroke-opacity: 0.45; }
+.botanical .ink.petal-vein.standard { stroke: var(--petal-vein-deep); stroke-opacity: 0.65; }
+.botanical .ink.spine { stroke: var(--spine); }
+.botanical .ink.hook { stroke: var(--spine-hook); }
+.botanical .ink.wool { stroke: var(--wool); stroke-width: calc(0.5 * var(--k)); stroke-opacity: 0.8; }
+.botanical .ink.stripe { stroke: var(--stripe-crinum); stroke-width: calc(0.9 * var(--k)); stroke-opacity: 0.8; }
+.botanical .ink.filament-edge { stroke-opacity: 0.55; }
+.botanical .ink.water-line { stroke: var(--water-line); stroke-width: calc(0.8 * var(--k)); stroke-opacity: 0.72; }

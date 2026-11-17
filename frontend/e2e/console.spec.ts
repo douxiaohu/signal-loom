@@ -103,6 +103,94 @@ test("public image is contained and opens a full-image viewer", async ({ page })
   await expect(page.getByRole("dialog", { name: "图片预览" })).toHaveCount(0);
 });
 
+test("Assembly finishes and replays without blocking the live reading controls", async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await installApi(page);
+  await page.goto("/");
+  await expect(page.locator(".intro-title")).toContainText("世界在发生");
+  await expect(page.locator(".intro-lavender svg")).toBeAttached();
+  await expect(page.locator(".editorial-intro")).not.toHaveClass(/is-assembling/, { timeout: 20_000 });
+  await page.screenshot({ path: testInfo.outputPath("reading-room.png") });
+  await page.getByRole("button", { name: "重播页面组装动画" }).click();
+  await expect(page.locator(".hands .pointer").first()).toBeAttached();
+  await page.getByRole("button", { name: "图片", exact: true }).click();
+  await expect(page).toHaveURL(/media=photo/);
+  await expect(page.getByText("供应链组件出现高危漏洞，请优先确认受影响版本。")).toBeVisible();
+  await page.locator(".editorial-intro").scrollIntoViewIfNeeded();
+  await expect(page.locator(".editorial-intro")).not.toHaveClass(/is-assembling/, { timeout: 20_000 });
+  await expect(page.locator(".intro-title")).toHaveText("世界在发生， 消息在这里相遇。", { timeout: 20_000 });
+  expect(errors).toEqual([]);
+});
+
+test("message text assembles on scroll while copy, pagination and media stay functional", async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (text: string) => { (window as unknown as { copiedPost: string }).copiedPost = text; } } });
+  });
+  await installApi(page);
+  const body = "逐字组装消息标题\n\n" + "公开频道的消息在滚动到这里时逐字呈现，完整的正文始终可以复制和阅读。".repeat(7) + "\n\nhttps://example.com/source #阅读";
+  await page.route("**/api/public/messages**", async (route) => {
+    const more = new URL(route.request().url()).searchParams.has("cursor");
+    return json(route, { items: [{ ...messages[0], id: more ? 31 : 30, content: more ? "分页里的新消息也会逐字组装。" : body }], has_more: !more, next_cursor: more ? null : "page-2", total: null });
+  });
+  await page.goto("/");
+  const card = page.locator(".message-card.is-reading").first();
+  await expect(card).toHaveAttribute("data-assembly-state", "waiting");
+  await card.scrollIntoViewIfNeeded();
+  await expect(card).toHaveAttribute("data-assembly-state", "building");
+  const paragraph = card.locator(".pub-rich-line").first();
+  await expect.poll(() => paragraph.evaluate((el) => el.style.clipPath)).toMatch(/^path/);
+  // Its visible glyphs are still being written, while the DOM and links already hold the full post.
+  await expect(paragraph).toContainText("完整的正文始终可以复制和阅读。");
+  await expect(card.locator("a[href='https://example.com/source']")).toHaveCount(1);
+  await page.screenshot({ path: testInfo.outputPath("message-assembly.png") });
+  await card.getByRole("button", { name: "复制正文内容" }).click();
+  await expect(card).toHaveAttribute("data-assembly-state", "complete");
+  expect(await page.evaluate(() => (window as unknown as { copiedPost: string }).copiedPost)).toBe(body);
+  expect(await paragraph.evaluate((el) => el.style.clipPath)).toBe("");
+  await card.getByRole("button", { name: "查看完整图片 1" }).click();
+  await expect(page.getByRole("dialog", { name: "图片预览" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "加载更多", exact: true }).click();
+  const appended = page.locator(".message-card.is-reading").nth(1);
+  await appended.scrollIntoViewIfNeeded();
+  await expect(appended).toHaveAttribute("data-assembly-state", "building");
+  const began = Date.now();
+  await expect(appended).toHaveAttribute("data-assembly-state", "complete", { timeout: 4_000 });
+  expect(Date.now() - began).toBeLessThan(4_000);
+  await page.getByRole("button", { name: "图片", exact: true }).click();
+  await expect(card).toHaveAttribute("data-assembly-state", "complete");
+  await expect(card.locator(".message-assembly-layer")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Alfama loads on approach, follows reading light and respects reduced motion", async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const requested: string[] = [];
+  page.on("request", (request) => requested.push(request.url()));
+  await installApi(page);
+  await page.goto("/");
+  await expect(page.locator(".intro-title")).toContainText("消息在这里相遇");
+  await expect(page.locator(".hands .pointer")).toHaveCount(0);
+  await page.locator(".message-card.is-reading").first().scrollIntoViewIfNeeded();
+  await expect(page.locator(".message-assembly-layer")).toHaveCount(0);
+  expect(await page.locator(".pub-rich-line").first().evaluate((el) => el.style.clipPath)).toBe("");
+  expect(requested.some((url) => url.includes("assembly-runtime"))).toBe(false);
+  await page.locator(".editorial-footer").scrollIntoViewIfNeeded();
+  await expect(page.locator(".footer-world .world--alfama")).toBeAttached();
+  const footer = page.locator(".editorial-footer");
+  await expect(footer).toHaveAttribute("data-light", "day");
+  await footer.screenshot({ path: testInfo.outputPath("alfama-day.png") });
+  await footer.getByRole("button", { name: "切换到夜间" }).click();
+  await expect(footer).toHaveAttribute("data-light", "night");
+  await expect(footer.locator(".pane--night").first()).toBeVisible();
+  await footer.screenshot({ path: testInfo.outputPath("alfama-night.png") });
+  expect(await footer.locator(".al-tram > svg").first().evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test("admin center keeps key login and contains no delivery surface", async ({ page }) => {
   await installApi(page, false);
   await page.goto("/admin/");

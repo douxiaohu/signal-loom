@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
-import { ThemeSelect, ThemeSwitcher } from "../src/theme";
+import { initializePublicTheme, ReadingLightSwitch, ThemeSelect, ThemeSwitcher } from "../src/theme";
 
 describe("ThemeSwitcher", () => {
   beforeEach(() => {
@@ -45,5 +45,22 @@ describe("ThemeSwitcher", () => {
     await userEvent.setup().selectOptions(screen.getByLabelText("界面主题"), "paper");
     expect(document.documentElement.dataset.theme).toBe("paper");
     expect(window.localStorage.getItem("tm-theme")).toBe("paper");
+  });
+
+  it("starts a new public reader on paper and keeps both reading switches in sync", async () => {
+    initializePublicTheme();
+    render(<><ReadingLightSwitch /><ReadingLightSwitch /></>);
+    expect(document.documentElement.dataset.theme).toBe("paper");
+    await userEvent.setup().click(screen.getAllByRole("button", { name: "切换到夜间" })[0]);
+    expect(screen.getAllByRole("button", { name: "切换到日间" })).toHaveLength(2);
+    expect(window.localStorage.getItem("tm-theme")).toBe("midnight");
+  });
+
+  it("preserves a returning public reader's saved choice", () => {
+    window.localStorage.setItem("tm-theme", "aurora");
+    render(<ThemeSwitcher />);
+    initializePublicTheme();
+    expect(document.documentElement.dataset.theme).toBe("aurora");
+    expect(window.localStorage.getItem("tm-theme")).toBe("aurora");
   });
 });

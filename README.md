@@ -1,127 +1,135 @@
-# Telegram 频道资讯平台
+<div align="center">
 
-**当前正式版：1.0.0**
+# 频道资讯 · The Daily Signal
 
-单机可部署的公开资讯聚合服务。采集公开 Telegram 频道（以及可选的 Bot 群组/频道），提供免密浏览、检索和媒体查看。
+**从公开频道，拾取值得停留的声音。**
 
-技术栈是 **Go + React 19 + SQLite**（服务端已从 Python/FastAPI 迁移到 Go）。默认一个容器、一个进程、一份本地数据库。容器内服务监听 `0.0.0.0:8000`，Compose **只把端口发布到** `127.0.0.1:8000`。公网访问交给同机反向代理或 Tunnel。只能跑一个实例：采集调度和 SQLite 写者都在同一进程里。
+Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图分享
 
-| 入口 | 地址 | 访问控制 |
-| --- | --- | --- |
-| 频道资讯 | `/` | 免密，只展示管理员标记为公开的来源 |
-| 管理中心 | `/admin` | 单管理员密钥登录 |
-| 健康检查 | `/health` | 免密，返回 `{"status":"ok"}` |
+![Go 1.26+](https://img.shields.io/badge/Go-1.26%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-single_instance-526B44?style=flat-square&logo=sqlite&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)
 
-仓库：[https://github.com/douxiaohu/telegram-github-radar](https://github.com/douxiaohu/telegram-github-radar)（私有）。更细的架构说明见 [`docs/architecture/2026-08-13-modular-monolith.md`](docs/architecture/2026-08-13-modular-monolith.md)。
+[在线阅读](https://douxiaohu.duckdns.org) · [快速开始](#快速开始) · [本地开发](#本地开发) · [配置](#配置) · [文档导航](#文档导航)
 
-## 现在的结构
+</div>
 
-进程内部按端口适配器拆开，部署形态不变：
+![频道资讯首页：纸张阅读室与植物插画](docs/images/reading-room.png)
 
-```
-浏览器 --HTTPS--> 反向代理 / Tunnel
-                      |
-              127.0.0.1:8000  (Compose 发布)
-                      |
-              Go 服务（单进程）
-         +------------+------------+
-         | HTTP       | Jobs       |
-         | /          | 频道采集   |
-         | /admin     |            |
-         +------+-----+-----+------+
-                |           |
-         SourceService   FeedService
-                |           |
-     SourceAdapter     SQLite repositories
-     telegram_public   data/telegram_forwarder.db
-     telegram_bot      data/media-cache
-```
+> 一个可以单机部署的资讯阅读站。Go 负责采集、权限与媒体缓存，React 提供公开阅读页和独立管理中心；一份 SQLite 保存消息与来源，日常浏览无需登录。
 
-- 新来源实现 `SourceAdapter`（`validate_locator` / `allocate_source_id` / `fetch`）。`fetch()` **只拉数据，不写库**。
-- 通知有空的 `Notifier` 端口，本轮没有任何通道。企业微信 / 截图 / 投递 HTTP 已从运行时删除；历史 `delivery_*` 表保留在库里，但不提供界面。
-- RSS 等非 Telegram 来源还不入库：`messages.message_id` 仍是整数。下一轮需要 `external_id TEXT` 和管理表单。
+## 这一版能做什么
 
-## 功能
-
-**公共端**
-
-- 只读浏览公开频道消息：来源、关键词、媒体类型、游标分页
-- 图片先加载等比缩略图，点击后再拉原图
-- 可跳转 Telegram 原文
-
-**管理端**
-
-- 添加 `telegram_public`（公开频道 URL）或 `telegram_bot`（数字 `chat_id`）来源
-- 新来源默认采集、默认不公开
-- 启停采集、立即采集、来源健康、消息检索
-- 监测规则与命中确认 / 解决
-
-**不会再出现的东西**
-
-- `/status`、`/api/groups`、`/api/deliveries`、`/jobs/forward-now`、`/screenshots`
-- 企业微信 Webhook、截图摘要、投递重试
-
-## 运行环境
-
-| 方式 | 要求 |
+| 阅读与分享 | 采集与管理 |
 | --- | --- |
-| Docker | Docker Engine 20+、Compose v2、约 1 核 / 1GB 起步 |
-| 本地开发 | Python 3.11+、Node.js 20+、npm |
-| 生产暴露 | 同机 Caddy / Nginx 或 Cloudflare Tunnel；不要把 `8000` 映射到 `0.0.0.0` |
+| 来源、关键词、媒体类型筛选，URL 保留检索条件 | 添加公开 Telegram 频道，启停与立即采集 |
+| 纸张日间与夜间阅读，滚动触发逐字组装 | 频道健康、采集状态、消息检索 |
+| 植物生长动效、Alfama 水彩城市页脚 | 监测规则与命中确认、解决 |
+| 图片按完整比例展示，点击查看原图 | 概览、访问统计与反馈管理 API |
+| 长文不截断、多图不裁切，自动生成分享分页 | 新增来源默认采集，单独控制是否公开 |
+| 复制当前页、下载 PNG 或整套 PNG 的 ZIP | 管理密钥登录、会话与同源写入校验 |
 
-Linux 把 `APP_UID` / `APP_GID` 设为部署用户的 `id -u` / `id -g`。
+### 界面与动效
 
-## 快速开始（Docker）
+页面使用暖白纸张、中文衬线标题和橄榄绿控件。介绍区的游标会拉框、排字；消息进入视口后逐字显现，图片优先展开，单卡动画最多约 3.2 秒。点击、键盘操作会立即显示完整内容；开启“减少动态效果”时直接显示完成状态。
+
+![Alfama 夜间页脚：水彩城市、星空与窗灯](docs/images/alfama-night.png)
+
+### 分享保留完整内容
+
+- 正文按实际字体测量换行，保留段落；长文自动分页。
+- 按附件顺序加入全部静态图片，优先原图，完整等比绘制。
+- 单页逻辑尺寸不超过 1080 × 2600，输出 PNG 不超过 1620 × 3900，避免无限长画布。
+- 每页都有来源、页号和网站链接 `https://douxiaohu.duckdns.org`。
+- 单页下载 PNG，多页一次下载 ZIP；图片加载失败时明确标记位置。
+
+页面截图展示界面样式，统计数字和消息内容以实际数据为准。分享图片目前使用本站公网地址；自部署时可在 [`frontend/src/lib/shareCard.ts`](frontend/src/lib/shareCard.ts) 修改 `WEBSITE_URL`。
+
+## 运行结构
+
+```mermaid
+flowchart LR
+    Reader[浏览器] --> Proxy[HTTPS 反向代理]
+    Proxy --> HTTP[Go HTTP 服务]
+    HTTP --> Public[公开资讯与媒体]
+    HTTP --> Admin[管理会话与操作]
+    Public --> Storage[(SQLite)]
+    Admin --> Storage
+    Collector[频道采集调度] --> Telegram[Telegram 公开频道页]
+    Collector --> Storage
+    Collector --> Cache[本地媒体缓存]
+    Public --> Cache
+```
+
+**运行时是 Go + React 19 + SQLite。** 历史 Python/FastAPI 实现保留在 `app/` 和 `tests/`，当前 Docker 镜像执行 `cmd/server` 构建出的 Go 程序。
+
+| 入口 | 路径 | 访问方式 |
+| --- | --- | --- |
+| 公开阅读 | `/` | 无需登录，只展示已启用且公开的来源 |
+| 管理中心 | `/admin` | 管理密钥登录 |
+| 公开 API | `/api/public/*` | 来源、消息、媒体与反馈 |
+| 管理 API | `/api/admin/*` | 需要有效管理会话 |
+| 健康检查 | `/health` | `{"status":"ok"}` |
+
+服务、采集器和 SQLite 写入运行在一个进程中。**同一份数据库只运行一个应用实例**；管理会话在内存中保存，重启后需重新登录。
+
+## 快速开始
+
+需要 Docker Engine、Compose 和可访问 Telegram 频道页的服务器网络。镜像构建需要访问 npm、Go 模块与基础镜像仓库。
+
+### 1. 获取代码与配置
 
 ```bash
 git clone https://github.com/douxiaohu/telegram-github-radar.git
 cd telegram-github-radar
 cp .env.example .env
 cp config/groups.example.yaml config/groups.yaml
+mkdir -p data/media-cache
 ```
 
-生成密钥（生产缺少管理密钥、或会话密钥不足 32 字节时会拒绝启动）：
+源码托管于 [douxiaohu/telegram-github-radar](https://github.com/douxiaohu/telegram-github-radar)。
+
+### 2. 设置密钥
+
+分别运行以下命令，将输出填入 `.env` 的 `ADMIN_API_KEY` 和 `SESSION_SECRET`：
 
 ```bash
-# 写入 .env
-ADMIN_API_KEY=$(openssl rand -hex 24)
-SESSION_SECRET=$(openssl rand -hex 32)
+openssl rand -hex 24
+openssl rand -hex 32
 ```
 
-至少确认：
+确认以下配置：
 
-```bash
+```dotenv
+APP_ENV=production
+ADMIN_API_KEY=<第一条命令生成的管理密钥>
+SESSION_SECRET=<第二条命令生成的会话密钥>
+SESSION_COOKIE_SECURE=true
 DATABASE_URL=sqlite:///./data/telegram_forwarder.db
 TIMEZONE=Asia/Shanghai
-ADMIN_API_KEY=
-SESSION_SECRET=
-SESSION_COOKIE_SECURE=true
-APP_ENV=production
 APP_UID=1000
 APP_GID=1000
 ```
 
-`config/groups.yaml` 只在 **sources 表为空** 时种入一次。公开频道写成 `source: https://t.me/channel`；Bot 来源写成数字 `chat_id`。种入后公开范围和启停都在 `/admin` 维护。
+Linux 上将 `APP_UID`、`APP_GID` 设置为部署用户对应的 UID/GID，保证持久化目录可写。容器内 `HOST` 保持为空，`PORT` 使用默认 8000。
 
-当前 `docker-compose.yml` 接入外部网络 `ai-internal`。新机器先执行：
+### 3. 启动
 
-```bash
-docker network create ai-internal
-```
-
-不需要和同机其它服务互通时，也可以删掉 compose 里的 `ai-internal` 声明。
+当前 Compose 引用外部网络 `ai-internal`，首次部署先创建：
 
 ```bash
-mkdir -p data/media-cache
+docker network inspect ai-internal >/dev/null 2>&1 || docker network create ai-internal
 docker compose up -d --build
-curl -sS http://127.0.0.1:8000/health
+docker compose ps
+curl -fsS http://127.0.0.1:8000/health
 ```
 
-公开频道启动后立刻抓一次，之后按 `CRAWL_INTERVAL_SECONDS`（默认 300）继续。配置了 `TELEGRAM_BOT_TOKEN` 时，才会长轮询 `adapter=telegram_bot` 且已启用的来源。
+Compose 将服务发布到 **`127.0.0.1:8000`**。生产环境通过同机 HTTPS 反向代理访问；安全 Cookie 要求使用 HTTPS 登录管理中心。
 
-### HTTPS 反代
-
-Caddy：
+<details>
+<summary><strong>Caddy 反向代理示例</strong></summary>
 
 ```caddy
 radar.example.com {
@@ -130,152 +138,183 @@ radar.example.com {
 }
 ```
 
-部署后应满足：HTTPS 根路径免密；`/admin` 才有密钥框；未登录访问 `/api/admin/sources` 返回 401；公网访问裸 `IP:8000` 失败。
+反向代理需保留浏览器原始 `Host`，传递 `X-Forwarded-For`。Nginx 对应设置为 `proxy_set_header Host $host;`。服务会校验写请求的 `Origin` 与 `Host`；修改 Host 可能导致登录或操作返回 403。
 
-对反向代理的要求：
+`TRUSTED_PROXIES` 只配置实际可信的代理 IP/CIDR。通过 CDN 或额外网关接入时，需要结合真实链路配置，才能正确统计客户端地址和执行限流。
 
-- **保留原始 `Host` 头**（Caddy 默认保留；Nginx 需要 `proxy_set_header Host $host;`）。所有写操作（登录、登出、管理端修改、反馈）都会校验 `Origin` 与 `Host` 同源，`Host` 被改写会得到 403。
-- 传递客户端地址：Caddy 默认带 `X-Forwarded-For`；Nginx 需要 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`。服务只信任来自 `TRUSTED_PROXIES`（默认：本机与内网段）的转发头，并取链上最右侧不属于可信代理的地址作为客户端 IP，用于登录限流和访问统计；直连客户端伪造的转发头一律忽略。
-- 在 Cloudflare 等 CDN 之后，把 CDN 的出口网段加入 `TRUSTED_PROXIES`，否则看到的是 CDN 地址。
+</details>
+
+### 4. 管理来源
+
+打开 `/admin`，使用管理密钥登录，再添加频道名称和 `https://t.me/channel`。新增频道默认采集、默认不公开，确认内容后再启用公开展示。
+
+`config/groups.yaml` 用于**空 sources 表的首次初始化**。示例：
+
+```yaml
+groups:
+  - source: "https://t.me/zaihuapd"
+    name: "zaihuapd"
+  - source: "https://t.me/s/tnews365"
+    name: "竹新社"
+```
+
+初始化文件导入的有效公开频道默认采集且公开；修改 YAML 不会覆盖数据库中的已有来源。启动时采集一次，之后默认每 300 秒继续采集。
+
+> 当前 Go 版本支持 `telegram_public`。`telegram_bot`、Bot 长轮询和 RSS 尚未接入 Go 运行时；`TELEGRAM_BOT_TOKEN` 只为兼容旧配置保留。
 
 ## 本地开发
 
-需要 Go 1.26+、Node.js 20+。
+需要 **Go 1.26+、Node.js 22 LTS 和 npm**。不需要 Python 来运行当前应用。
 
 ```bash
 cp .env.example .env
 cp config/groups.example.yaml config/groups.yaml
-cd frontend && npm ci && npm run build && cd ..
+mkdir -p data/media-cache
+cd frontend
+npm ci
+npm run build
+cd ..
+```
 
+在第一个终端启动后端：
+
+```bash
 APP_ENV=development \
 HOST=127.0.0.1 \
-ADMIN_API_KEY=local-admin-key-1234 \
-SESSION_SECRET=local-session-secret-at-least-32-bytes \
 SESSION_COOKIE_SECURE=false \
 go run ./cmd/server
 ```
 
-`APP_ENV=development` 下不设 `ADMIN_API_KEY` 时，服务会生成一个仅本次运行有效的随机密钥并打印在日志里；没有任何固定的默认密码。开发环境同样要求密钥至少 16 字符。
+从 `.env` 读取已设置的密钥。开发环境缺少密钥时会生成临时值，临时管理密钥写入本地启动日志；生产不会使用临时密钥。
+
+在第二个终端启动前端：
 
 ```bash
 cd frontend
-npm run dev
+npm run dev -- --host 127.0.0.1
 ```
 
-Vite 只把 `/api` 代理到后端。本地把 `SESSION_COOKIE_SECURE` 设为 `false`，生产必须为 `true`。
-
-## 添加来源
-
-**公开频道（默认）**
-
-管理中心填写名称和 `https://t.me/channel`，或：
-
-```bash
-curl -X POST https://radar.example.com/api/admin/sources \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"竹新社","source_url":"https://t.me/s/tnews365"}'
-```
-
-`source_id` / `chat_id` 由用户名 CRC 映射到 `-900000000000` 空间，与媒体缓存目录算法一致。
-
-**Bot 来源**
-
-机器人必须已在目标群 / 频道内，并配置 `TELEGRAM_BOT_TOKEN`：
-
-```bash
-curl -X POST https://radar.example.com/api/admin/sources \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"内部群","source_url":"-1001234567890","adapter":"telegram_bot"}'
-```
-
-Bot 使用真实 Telegram `chat_id`，不再哈希。未公开的 Bot 消息只出现在 `/admin`。
-
-> **Go 版本现状**：只实现了 `telegram_public`。`adapter` 为其它值（含 `telegram_bot`）时返回 422；`groups.yaml` 里的 Bot 条目导入时会被跳过并在日志里提示。
-
-重复添加同一个频道返回 409，不会覆盖已有来源的名称、公开状态或启停。
+Vite 在终端显示本地地址，并把 `/api` 代理到 `127.0.0.1:8000`。本地 HTTP 登录需使用 `SESSION_COOKIE_SECURE=false`；生产必须为 `true`。
 
 ## 配置
 
-完整示例见 [`.env.example`](.env.example)。不要提交真实 `.env` 或 `config/groups.yaml`。
+完整配置及默认值见 [`.env.example`](.env.example)。进程环境变量优先于 `.env`。
 
-| 变量 | 说明 |
+| 变量 | 用途 / 默认值 |
 | --- | --- |
-| `APP_ENV` | `production`（默认）/ `staging` / `development` / `test`，不区分大小写；拼写错误会**拒绝启动**，不会退化成宽松模式 |
-| `ADMIN_API_KEY` | 管理登录密钥，生产必填且至少 16 字符 |
-| `SESSION_SECRET` | 会话 HMAC 密钥，生产至少 32 字节 |
-| `SESSION_COOKIE_SECURE` | 生产必须 `true`；接受 `true/false/1/0/yes/no/on/off`，无法识别的值按 `true` 处理 |
-| `LOGIN_MAX_ATTEMPTS` / `LOGIN_WINDOW_SECONDS` | 每个客户端在窗口内最多失败登录次数（默认 5 次 / 900 秒），超过返回 429 + `Retry-After` |
-| `FEEDBACK_RATE_LIMIT` / `FEEDBACK_RATE_WINDOW_SECONDS` | 反馈提交限流（默认 5 次 / 60 秒） |
-| `HOST` / `PORT` | 监听地址（默认所有网卡，Docker 内需要）与端口 |
-| `TRUSTED_PROXIES` | 可信反向代理，逗号分隔的 IP / CIDR，或 `private`（默认）/ `loopback` / `none` |
-| `TIMEZONE` | 规则静默时段与"今日访问"的时区 |
-| `MEDIA_ALLOWED_HOSTS` / `MEDIA_MAX_BYTES` | 媒体缓存只下载这些域名（含子域）的 https 资源，单文件上限，默认 `telesco.pe,cdn-telegram.org` / 96 MiB |
-| `TELEGRAM_BOT_TOKEN` | Go 版本不使用（Bot 适配器未迁移），保留只为兼容旧 `.env` |
-| `CRAWL_INTERVAL_SECONDS` | 公开频道采集间隔 |
+| `APP_ENV` | `production` / `staging` / `development` / `test`；无法识别的值拒绝启动 |
+| `ADMIN_API_KEY` | 管理密钥，至少 16 字符 |
+| `SESSION_SECRET` | 会话 HMAC 密钥，至少 32 字节 |
+| `SESSION_COOKIE_SECURE` / `SESSION_TTL_HOURS` | HTTPS Cookie / 会话时长，默认 `true` / `12` |
+| `HOST` / `PORT` | 监听地址 / 端口，默认所有网卡 / `8000` |
+| `DATABASE_URL` | 默认 `sqlite:///./data/telegram_forwarder.db` |
+| `GROUPS_CONFIG_PATH` | 首次初始化来源，默认 `config/groups.yaml` |
+| `CRAWL_INTERVAL_SECONDS` | 采集间隔，默认 `300` |
+| `SOURCE_STALE_AFTER_SECONDS` | 来源延迟判断阈值，默认 `900` |
+| `TIMEZONE` | 静默时段、访问统计时区，默认 `Asia/Shanghai` |
+| `TRUSTED_PROXIES` | 可信代理 IP/CIDR 或 `private` / `loopback` / `none` |
+| `MEDIA_CACHE_DIR` | 默认 `./data/media-cache` |
+| `MEDIA_ALLOWED_HOSTS` | 默认 `telesco.pe,cdn-telegram.org` 及其子域，仅 HTTPS |
+| `MEDIA_MAX_BYTES` | 单文件缓存上限，默认 96 MiB |
+| `LOGIN_MAX_ATTEMPTS` / `LOGIN_WINDOW_SECONDS` | 登录限流，默认 5 次 / 900 秒 |
+| `FEEDBACK_RATE_LIMIT` / `FEEDBACK_RATE_WINDOW_SECONDS` | 反馈限流，默认 5 次 / 60 秒 |
 
-数据库文件名保持 `data/telegram_forwarder.db`，不要改路径除非你同时改备份脚本。
+真实 `.env`、`config/groups.yaml`、数据目录、发布包和本地备份不提交到 GitHub。
 
-## 可见性合同（不要改）
+## 数据与访问边界
 
-- 公共：请求的 `chat_id` 不在公开白名单 → **404**，不是空页
-- 公共：未指定来源且没有公开源 → **200** + 空列表
-- 管理：列表**不加** `IN (sources.id)`。历史孤儿 `chat_id` 仍能在管理端看到
-- 公共媒体：缺失与未公开一律 **404**
-- 会话：`tg_session`，HttpOnly，SameSite=Strict，Path=/，登出后 token 立即作废（进程内 sid 表，重启需重新登录）
-- 媒体：公开端 `/api/public/media/*` 只服务启用且已公开来源的消息；管理端使用需要会话的 `/api/admin/media/*`。服务器只下载白名单 CDN 上的 https 资源，且有大小上限
-- 写操作：所有 `POST/PATCH/PUT/DELETE /api/*` 必须带与 `Host` 同源的 `Origin`，请求体必须是 `application/json` 且有大小上限
+- 公开消息与媒体只允许访问**启用且已公开**的来源；指定未公开来源时返回 404。
+- 没有公开来源时，公开列表正常返回空集合。
+- 管理端保留历史孤儿消息的查询能力，来源删除或变化不等于删除历史消息。
+- 管理会话使用 HttpOnly / SameSite=Strict Cookie；登出立即作废。
+- 写请求要求 JSON，并执行同源校验和请求体大小限制；开发环境部分规则放宽。
+- 媒体由服务端按白名单缓存，返回给浏览器的是本站媒体路径。
+- 前端未知无扩展名路径可能回退到首页；不能仅凭 `/docs` 返回 200 判断暴露了 API 文档。未知 `/api/*` 返回 JSON 404。
+
+## 检查与测试
+
+```bash
+# Go 后端：接口、认证、采集、SQLite、媒体与配置
+go test ./...
+go vet ./...
+
+# 前端：组件测试与生产构建
+cd frontend
+npm ci
+npm test
+npm run build
+
+# 浏览器回归：首次使用需安装 Chromium
+npx playwright install chromium
+npm run test:e2e
+```
+
+浏览器测试覆盖 1440px、768px 和 390px 三种宽度，使用 API 测试数据验证检索、图片查看、动效、主题、权限入口、长文与多图分享；不会写入生产数据库。
+
+生产构建同时检查原始 JavaScript 体积：阅读代码 **260 KiB**、按需 Assembly **36 KiB**、按需分享导出 **16 KiB**。插画为本地静态资源，接近视口时再加载。
 
 ## 备份与升级
 
+SQLite 开启 WAL 时，使用在线备份接口，避免只复制正在写入的主数据库文件。若宿主机安装了 `sqlite3`：
+
 ```bash
 mkdir -p backups
-cp data/telegram_forwarder.db "backups/telegram-forwarder-$(date +%Y%m%d-%H%M%S).db"
-tar -czf "backups/data-$(date +%Y%m%d-%H%M%S).tgz" data/
-git pull
-docker compose up -d --build
+sqlite3 data/telegram_forwarder.db ".backup 'backups/telegram-forwarder-before-upgrade.db'"
 ```
 
-schema 只做增量 `ALTER`。已有消息、历史 `delivery_*` 和 GitHub 行不会被删除。
-
-## 验证
+使用独立时间戳目录保存数据库快照、媒体、生产配置和当前镜像引用。前端发布还应保存原静态资源，避免旧页面的动态导入失效。
 
 ```bash
-.venv/bin/python -m unittest discover -s tests -v
-cd frontend
-npm run test
-npm run build
+# 备份完成后，在同一检出目录更新代码
+git pull --ff-only
+docker compose build telegram-forwarder
+docker compose up -d --no-build telegram-forwarder
+curl -fsS http://127.0.0.1:8000/health
 ```
 
-部署后确认调度器只注册 `crawl_public_sources`，`/github` 和 `/api/public/github/rankings` 返回 404。
+升级后检查公开页面、媒体、分享导出和匿名管理 API 的 401。**前端回滚使用旧镜像，保留当前数据库**，避免覆盖发布后正常采集的数据。线上实际发布过程与回滚信息见[发布记录](docs/releases/2026-11-17-share-website-link-release.md)。
 
-## 项目布局
+## 目录导航
 
+```text
+cmd/server/             Go 应用入口：配置、仓储、调度与 HTTP 装配
+internal/
+  api/                  公开 / 管理 API、会话与静态资源路由
+  config/               环境配置、来源初始化与校验
+  crawler/              Telegram 公开频道采集
+  media/                媒体下载、缓存与等比缩略图
+  model/                领域数据与 API DTO
+  repository/           SQLite 读写、迁移与统计
+  safe/                 后台任务容错与错误脱敏
+  scheduler/            单进程采集调度
+frontend/
+  src/components/       阅读、管理、媒体与分享组件
+  src/components/editorial/  Assembly、植物与风景页脚
+  src/lib/shareCard.ts   完整文字、多图分页与 PNG / ZIP 导出
+  src/styles/           日夜主题与界面样式
+  src/vendor/delineate/ 上游绘图引擎与 MIT 许可
+  public/artwork/       本地插画资源
+  test/                 前端单元测试
+  e2e/                  三尺寸浏览器测试
+config/                 来源配置示例
+docs/                   架构决定、设计与发布记录
+app/ · tests/           历史 Python 实现与测试
 ```
-app/
-  main.py                 装配：AppContext、路由、静态资源
-  context.py              进程内依赖
-  domain/                 用例：来源、资讯流
-  ingest/                 SourceAdapter：telegram_public / telegram_bot
-  persistence/sqlite/     连接（busy_timeout=5000）与存储
-  jobs/                   JobSpec / JobRunner
-  notifications/          空 Notifier 端口
-  http/                   错误脱敏等 HTTP 辅助
-  security.py             会话 HMAC + sid 表
-frontend/src/
-  features/               公共资讯 / 管理入口
-config/groups.example.yaml
-docs/architecture/        模块化单体设计
-```
 
-## 以后怎么加功能
+## 文档导航
 
-| 要加的东西 | 怎么加 | 不要做 |
-| --- | --- | --- |
-| 另一种 Telegram 抓取 | 新 `SourceAdapter`，注册进 `AdapterRegistry` | 改 `SQLiteStorage.create_source` 写死类型 |
-| RSS | 先做 `external_id TEXT` 和表单，再写 adapter | 把 GUID 硬塞进整数 `message_id` |
-| 邮件 / Webhook | 实现 `Notifier` 并挂到 `NotificationService` | 复活 WeCom `Forwarder` |
-| Postgres / 独立采集进程 | 换 repository；先把会话 sid 落库 | 直接把 uvicorn workers 调到 >1 |
+| 主题 | 文档 |
+| --- | --- |
+| 完整环境配置 | [`.env.example`](.env.example) |
+| 纸张阅读室与动效集成 | [界面设计决定](docs/architecture/notes/implemented/feature/2026-11-17-editorial-assembly-reading-room.md) |
+| 长文、多图与分页导出 | [媒体与分享修复](docs/architecture/notes/implemented/bug-fix/2026-11-17-complete-media-and-paged-share-cards.md) |
+| 界面发布与回滚 | [前端发布记录](docs/releases/2026-11-17-editorial-ui-release.md) |
+| 分享网站链接上线 | [链接修正发布](docs/releases/2026-11-17-share-website-link-release.md) |
+| 早期架构取舍 | [模块化单体设计（历史设计，含 Python 阶段）](docs/architecture/2026-08-13-modular-monolith.md) |
+| 上游源码与许可 | [delineate 集成说明](frontend/src/vendor/delineate/README.md) |
 
-## 许可
+## 致谢与许可
 
-本仓库当前为私有仓库。对外分发前请自行补充许可证。
+界面参考 [appautomaton/delineate](https://github.com/appautomaton/delineate) 的 Assembly、Climate Garden 和 Alfama。复用代码及绘图保留原 MIT 许可，见 [`frontend/src/vendor/delineate/LICENSE`](frontend/src/vendor/delineate/LICENSE) 和插画目录的[许可文件](frontend/public/artwork/LICENSE-delineate.txt)。
+
+本项目源码公开，尚未为项目自身声明统一开源许可证；上游 MIT 许可只适用于对应的复用部分。
