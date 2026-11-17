@@ -28,7 +28,7 @@ export default function AdminShell({ view, onChangeView, onLogout, children }: A
       <aside className="admin-sidebar">
         <div className="admin-brand">
           <strong><ShinyText text="管理中心" /></strong>
-          <small>后台工作台</small>
+          <small>拾讯 · Signal Loom</small>
         </div>
         <nav className="admin-menu" aria-label="后台模块">
           {items.map((item) => {

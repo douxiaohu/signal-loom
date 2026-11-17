@@ -84,7 +84,7 @@ export default function ShareCardModal({ message, returnFocusRef, onClose }: Sha
     if (!result || downloading) return;
     setDownloading(true);
     setDownloadError("");
-    const safeSource = (message.chat_title || "频道资讯").replace(/[\\/:*?"<>|\s]+/g, "-").slice(0, 24);
+    const safeSource = (message.chat_title || "拾讯").replace(/[\\/:*?"<>|\s]+/g, "-").slice(0, 24);
     let zipUrl = "";
     try {
       if (result.pages.length > 1) {
@@ -94,7 +94,7 @@ export default function ShareCardModal({ message, returnFocusRef, onClose }: Sha
       if (!dialogRef.current) return;
       const anchor = document.createElement("a");
       anchor.href = zipUrl || result.pages[0].url;
-      anchor.download = `频道资讯-${safeSource}-${message.message_id}${zipUrl ? "-全部.zip" : ".png"}`;
+      anchor.download = `拾讯-${safeSource}-${message.message_id}${zipUrl ? "-全部.zip" : ".png"}`;
       document.body.append(anchor);
       anchor.click();
       anchor.remove();

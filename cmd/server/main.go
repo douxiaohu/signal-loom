@@ -31,7 +31,7 @@ func main() {
 }
 
 func run() error {
-	log.Println("🚀 Telegram 频道资讯平台 (Go) 正在启动...")
+	log.Println("🚀 拾讯 · Signal Loom (Go) 正在启动...")
 
 	// 1. 加载并校验配置。校验失败时拒绝启动，而不是退化成不安全的默认值。
 	cfg, err := config.LoadConfig(".env")

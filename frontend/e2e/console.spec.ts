@@ -25,7 +25,7 @@ const messages = [
   },
   {
     id: 1, chat_id: -1002, chat_title: "行业动态频道", message_id: 88, sender_name: "编辑",
-    message_time: "2026-07-13T07:50:00+00:00", content: "频道资讯聚合样例。",
+    message_time: "2026-07-13T07:50:00+00:00", content: "拾讯聚合样例。",
     media_type: null, media_urls: [], media_items: [], source_url: "https://t.me/industry/88"
   }
 ];
@@ -69,7 +69,7 @@ test("public platform is keyless, responsive, keyboard reachable and WebGL-free"
   await installApi(page);
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "频道资讯" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "拾讯" })).toBeVisible();
   await expect(page.getByText("供应链组件出现高危漏洞，请优先确认受影响版本。")) .toBeVisible();
   await expect(page.getByLabel("管理密钥")).toHaveCount(0);
   await expect(page.locator("canvas")).toHaveCount(0);
@@ -249,7 +249,7 @@ test("dark themes keep inverted controls readable", async ({ page }) => {
   await page.addInitScript(() => window.localStorage.setItem("tm-theme", "midnight"));
   await installApi(page);
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "频道资讯" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "拾讯" })).toBeVisible();
   for (const selector of [
     ".pub-segment[aria-pressed='true']",
     ".pub-source[aria-checked='true'] .pub-source-name",

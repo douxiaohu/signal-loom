@@ -150,7 +150,7 @@ export async function renderShareCard(message: Message, { signal }: { signal?: A
     page.ctx.font = `600 27px ${FONT}`;
     page.ctx.textBaseline = "top";
     page.ctx.textAlign = "left";
-    page.ctx.fillText("频道资讯", PAD, fy);
+    page.ctx.fillText("拾讯", PAD, fy);
     page.ctx.fillStyle = palette.soft;
     page.ctx.font = `400 22px ${FONT}`;
     page.ctx.fillText(WEBSITE_URL, PAD, fy + 36);

@@ -63,9 +63,9 @@ export default function LandscapeFooter() {
     <footer className="editorial-footer" data-light={theme === "paper" ? "day" : "night"} ref={root} id="about">
       <div className="footer-world" ref={stage} aria-hidden="true" />
       <div className="editorial-footer-content">
-        <div className="footer-brand"><a href="#top" className="footer-wordmark"><Flower2 size={27} strokeWidth={1.2} />频道资讯<span>the daily signal</span></a><p>消息来来往往，<br />总有一些，值得停留。</p></div>
+        <div className="footer-brand"><a href="#top" className="footer-wordmark"><Flower2 size={27} strokeWidth={1.2} />拾讯<span>signal loom</span></a><p>消息来来往往，<br />总有一些，值得停留。</p></div>
         <nav className="footer-navigation" aria-label="页脚导航"><div><h2>在这里</h2><a href="#reading">阅读资讯 <ArrowUpRight size={12} /></a><a href="#sources">浏览来源 <ArrowUpRight size={12} /></a><a href="/admin">管理中心 <ArrowUpRight size={12} /></a></div><div><h2>关于这一页</h2><p>来自公开 Telegram 频道</p><p>按发布时间，汇集每一条消息</p><a href="https://github.com/appautomaton/delineate" target="_blank" rel="noreferrer">插画与动效 · delineate <ArrowUpRight size={12} /></a></div></nav>
-        <p className="footer-signoff">© {new Date().getFullYear()} 频道资讯 <span>在喧嚣中，留一处安静。</span></p>
+        <p className="footer-signoff">© {new Date().getFullYear()} 拾讯 <span>在喧嚣中，留一处安静。</span></p>
         <div className="footer-view"><span className="footer-scene-label">Alfama, Lisboa <span>38°43′ N · 9°08′ W</span></span><ReadingLightSwitch /><a href="#top" className="footer-top-link" aria-label="回到顶部"><ArrowUp size={17} /></a></div>
       </div>
     </footer>

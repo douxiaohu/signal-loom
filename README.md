@@ -1,8 +1,12 @@
 <div align="center">
 
-# 频道资讯 · The Daily Signal
+**简体中文** · [English](README.en.md) · [日本語](README.ja.md) · [Español](README.es.md)
 
-**从公开频道，拾取值得停留的声音。**
+# 拾讯 · Signal Loom
+
+**拾起消息，织成日常。**
+
+「拾」是发现，「讯」是连接。Signal Loom，把散落在频道里的声音，织成一页值得停留的阅读。
 
 Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图分享
 
@@ -17,7 +21,7 @@ Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图�
 
 </div>
 
-![频道资讯首页：纸张阅读室与植物插画](docs/images/reading-room.png)
+![拾讯首页：纸张阅读室与植物插画](docs/images/reading-room.png)
 
 > 一个可以单机部署的资讯阅读站。Go 负责采集、权限与媒体缓存，React 提供公开阅读页和独立管理中心；一份 SQLite 保存消息与来源，日常浏览无需登录。
 
@@ -32,21 +36,112 @@ Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图�
 | 长文不截断、多图不裁切，自动生成分享分页 | 新增来源默认采集，单独控制是否公开 |
 | 复制当前页、下载 PNG 或整套 PNG 的 ZIP | 管理密钥登录、会话与同源写入校验 |
 
-### 界面与动效
+### 01 · 在纸张阅读室里发现消息
 
-页面使用暖白纸张、中文衬线标题和橄榄绿控件。介绍区的游标会拉框、排字；消息进入视口后逐字显现，图片优先展开，单卡动画最多约 3.2 秒。点击、键盘操作会立即显示完整内容；开启“减少动态效果”时直接显示完成状态。
+暖白纸张、中文衬线标题与橄榄绿控件，让消息聚合页也有杂志的阅读节奏。介绍区会拉框排字，消息滚入视口后逐字显现，媒体优先展开，单卡动画最多约 3.2 秒。点击、键盘操作会立即显示完整内容；开启“减少动态效果”时直接显示完成状态。
 
-![Alfama 夜间页脚：水彩城市、星空与窗灯](docs/images/alfama-night.png)
+选择左侧来源，组合关键词与媒体类型筛选；检索条件保留在 URL，方便收藏和回访。频道脉搏展示公开来源数量、聚合总量、最近更新和当前已加载消息的小时节奏。
 
-### 分享保留完整内容
+![阅读与筛选：来源列表、关键词搜索、媒体类型和消息时间线](docs/images/reading-filters.png)
 
-- 正文按实际字体测量换行，保留段落；长文自动分页。
-- 按附件顺序加入全部静态图片，优先原图，完整等比绘制。
+### 02 · 横图、竖图、方图，都能完整看见
+
+图片按原始比例完整展示，多图保持附件顺序。点击任一图片进入大图预览，可打开原图或下载，按 Esc 返回阅读。
+
+![完整多图：横幅、竖幅和方形插画保留完整边缘](docs/images/complete-gallery.png)
+
+<details>
+<summary>查看原图预览界面</summary>
+
+![原图预览：完整竖图与原图、下载入口](docs/images/image-viewer.png)
+
+</details>
+
+### 03 · 把整篇内容，分享给另一个人
+
+点击消息右上角的星光按钮，生成带来源与网站链接的分享卡片。正文按实际字体测量换行，保留段落；全部静态图片优先使用原图，按附件顺序等比绘制。长文与多图自动分页，每页都有来源、页号和网站链接。
+
+![分享卡片：正文、来源、多图分页与导出工具](docs/images/share-pages.png)
+
 - 单页逻辑尺寸不超过 1080 × 2600，输出 PNG 不超过 1620 × 3900，避免无限长画布。
-- 每页都有来源、页号和网站链接 `https://douxiaohu.duckdns.org`。
-- 单页下载 PNG，多页一次下载 ZIP；图片加载失败时明确标记位置。
+- 可复制当前页，单页下载 PNG，多页一次下载 ZIP。
+- 图片加载失败时保留带编号的提示，方便回到原文查阅。
+- 每页页脚均带 `https://douxiaohu.duckdns.org`；自部署时可在 [`frontend/src/lib/shareCard.ts`](frontend/src/lib/shareCard.ts) 修改 `WEBSITE_URL`。
 
-页面截图展示界面样式，统计数字和消息内容以实际数据为准。分享图片目前使用本站公网地址；自部署时可在 [`frontend/src/lib/shareCard.ts`](frontend/src/lib/shareCard.ts) 修改 `WEBSITE_URL`。
+<details>
+<summary>查看多图分享末页与网站链接</summary>
+
+![分享末页：完整图片、页号和拾讯网站链接](docs/images/share-images.png)
+
+</details>
+
+### 04 · 一盏阅读灯，一座会呼吸的城市
+
+日间纸张与夜间阅读一键切换，植物插画与 Alfama 水彩页脚同步变化。星空、窗灯和电车组成阅读末尾的小风景；插画离开视口或页面隐藏时暂停，减少无效动画。
+
+![夜间页脚：拾讯品牌、水彩城市、星空与窗灯](docs/images/alfama-night.png)
+
+### 05 · 在手机上，也能轻松翻阅
+
+导航、搜索、来源与媒体筛选适配窄屏；图片继续保留完整比例，分享预览支持滚动和分页。
+
+<p align="center">
+  <img src="docs/images/mobile-reading.png" width="300" alt="移动端首页：拾讯与植物插画" />
+  <img src="docs/images/mobile-feed.png" width="300" alt="移动端阅读：搜索、来源和媒体筛选" />
+</p>
+
+### 06 · 用独立工作台，管理自己的信息花园
+
+管理中心通过管理密钥登录，提供概览、来源采集、规则命中、消息检索与访问记录。概览串起访问趋势、来源健康和规则生命周期，快速找到需要处理的事项。
+
+![管理概览：访问趋势、来源数量与规则生命周期](docs/images/admin-overview.png)
+
+<details>
+<summary><strong>来源管理</strong> · 添加频道、启停采集、控制是否公开</summary>
+
+新添加的来源默认采集、默认不公开。可以立即采集，查看抓取与入库数量，按连续失败或无新增消息筛选来源；公开展示独立控制。
+
+![来源管理：公开与私有状态、采集控制和新增频道表单](docs/images/admin-sources.png)
+
+</details>
+
+<details>
+<summary><strong>规则监测</strong> · 从关键词命中，到确认与解决</summary>
+
+创建普通关键词规则，新规则默认停用，确认后可启用。规则命中按新建、已确认、已解决流转；后台可查看命中内容、来源和时间。
+
+![规则命中：待处理消息、确认与解决按钮、监测规则](docs/images/admin-rules.png)
+
+</details>
+
+<details>
+<summary><strong>消息检索</strong> · 按来源、关键词和媒体类型查询</summary>
+
+管理端提供独立检索工作区，便于核查采集内容，并保留历史孤儿消息的查询能力。
+
+![后台消息检索：来源筛选、关键词与消息内容](docs/images/admin-search.png)
+
+</details>
+
+<details>
+<summary><strong>访问记录</strong> · 观察阅读站的使用情况</summary>
+
+按 IP 去重统计今日、近 7 日和累计访问，列出最近访问时间、路径、来源与设备。实际 IP 识别依赖可信代理配置；截图中的 IP 使用文档保留网段。
+
+![访问记录：访问指标、路径与设备信息](docs/images/admin-visits.png)
+
+</details>
+
+> 本页 14 张截图来自当前前端的本地浏览器实拍，使用隔离的演示来源、消息、插画和统计数据；不展示真实密钥、访客地址或生产后台数据。截图界面为中文，多语言版本翻译项目介绍与操作文档，应用界面目前以中文为主。
+
+## 多语言文档
+
+| 语言 | 阅读入口 | 内容 |
+| --- | --- | --- |
+| 简体中文 | [README](README.md) | 完整功能图解、部署、开发与运维说明 |
+| English | [English guide](README.en.md) | Features, screenshots, setup, configuration and operations |
+| 日本語 | [日本語ガイド](README.ja.md) | 機能紹介・画面・導入・設定・運用 |
+| Español | [Guía en español](README.es.md) | Funciones, capturas, instalación, configuración y operación |
 
 ## 运行结构
 
@@ -133,7 +228,7 @@ Compose 将服务发布到 **`127.0.0.1:8000`**。生产环境通过同机 HTTPS
 <summary><strong>Caddy 反向代理示例</strong></summary>
 
 ```caddy
-radar.example.com {
+signal.example.com {
     encode gzip
     reverse_proxy 127.0.0.1:8000
 }
