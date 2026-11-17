@@ -434,7 +434,7 @@ app/ · tests/           历史 Python 实现与测试
 | 完整环境配置 | [`.env.example`](.env.example) |
 | 纸张阅读室与动效集成 | [界面设计决定](docs/architecture/notes/implemented/feature/2026-11-17-editorial-assembly-reading-room.md) |
 | 长文、多图与分页导出 | [媒体与分享修复](docs/architecture/notes/implemented/bug-fix/2026-11-17-complete-media-and-paged-share-cards.md) |
-| 拾讯品牌、四语言文档与上线 | [本次发布记录](docs/releases/2026-11-17-signal-loom-brand-release.md) |
+| 阅读、四语言界面与统一运维上线 | [本次发布记录](docs/releases/2026-11-17-reader-and-verified-operations.md) |
 | 界面发布与回滚 | [前端发布记录](docs/releases/2026-11-17-editorial-ui-release.md) |
 | 分享网站链接上线 | [链接修正发布](docs/releases/2026-11-17-share-website-link-release.md) |
 | 早期架构取舍 | [模块化单体设计（历史设计，含 Python 阶段）](docs/architecture/2026-08-13-modular-monolith.md) |

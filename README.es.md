@@ -323,7 +323,7 @@ Consulta [operaciones](docs/operations.md) para compilar, publicar y revertir. L
 | Configuración completa | [`.env.example`](.env.example) |
 | Lectura y animaciones | [Decisión de diseño, chino](docs/architecture/notes/implemented/feature/2026-11-17-editorial-assembly-reading-room.md) |
 | Medios y tarjetas paginadas | [Notas de implementación, chino](docs/architecture/notes/implemented/bug-fix/2026-11-17-complete-media-and-paged-share-cards.md) |
-| Despliegue y reversión | [Registro de publicación, chino](docs/releases/2026-11-17-signal-loom-brand-release.md) |
+| Despliegue y reversión | [Registro de publicación, chino](docs/releases/2026-11-17-reader-and-verified-operations.md) |
 | Estructura del código | [Referencia principal, chino](README.md#目录导航) |
 | Seguridad | [SECURITY.md](SECURITY.md) |
 | Licencias | [MIT](LICENSE) · [Avisos de terceros](THIRD_PARTY_NOTICES.md) |

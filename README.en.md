@@ -352,7 +352,7 @@ See [operations](docs/operations.md) for build, deployment and rollback commands
 | Environment settings | [`.env.example`](.env.example) |
 | Reading room and motion design | [Design decision, Chinese](docs/architecture/notes/implemented/feature/2026-11-17-editorial-assembly-reading-room.md) |
 | Complete media and paginated sharing | [Implementation notes, Chinese](docs/architecture/notes/implemented/bug-fix/2026-11-17-complete-media-and-paged-share-cards.md) |
-| Deployment and rollback | [Release record, Chinese](docs/releases/2026-11-17-signal-loom-brand-release.md) |
+| Deployment and rollback | [Release record, Chinese](docs/releases/2026-11-17-reader-and-verified-operations.md) |
 | Source layout and detailed operations | [Main reference, Chinese](README.md#目录导航) |
 | Security | [SECURITY.md](SECURITY.md) |
 | Licensing | [MIT](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md) |
