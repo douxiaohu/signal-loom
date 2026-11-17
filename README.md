@@ -11,6 +11,7 @@ Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图�
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-single_instance-526B44?style=flat-square&logo=sqlite&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-526B44?style=flat-square)](LICENSE)
 
 [在线阅读](https://douxiaohu.duckdns.org) · [快速开始](#快速开始) · [本地开发](#本地开发) · [配置](#配置) · [文档导航](#文档导航)
 
@@ -312,9 +313,11 @@ app/ · tests/           历史 Python 实现与测试
 | 分享网站链接上线 | [链接修正发布](docs/releases/2026-11-17-share-website-link-release.md) |
 | 早期架构取舍 | [模块化单体设计（历史设计，含 Python 阶段）](docs/architecture/2026-08-13-modular-monolith.md) |
 | 上游源码与许可 | [delineate 集成说明](frontend/src/vendor/delineate/README.md) |
+| 项目统一许可与第三方归属 | [MIT](LICENSE) · [第三方许可](THIRD_PARTY_NOTICES.md) |
+| 敏感信息保护与检查结果 | [安全说明](SECURITY.md) · [2026-11-17 审计记录](docs/architecture/notes/implemented/process/2026-11-17-project-license-and-sensitive-content-audit.md) |
 
 ## 致谢与许可
 
 界面参考 [appautomaton/delineate](https://github.com/appautomaton/delineate) 的 Assembly、Climate Garden 和 Alfama。复用代码及绘图保留原 MIT 许可，见 [`frontend/src/vendor/delineate/LICENSE`](frontend/src/vendor/delineate/LICENSE) 和插画目录的[许可文件](frontend/public/artwork/LICENSE-delineate.txt)。
 
-本项目源码公开，尚未为项目自身声明统一开源许可证；上游 MIT 许可只适用于对应的复用部分。
+项目自身代码和文档统一采用 [MIT 许可证](LICENSE)，允许使用、修改和再分发，需保留版权与许可声明。第三方代码、Geist 字体和依赖保留原始许可；频道内容和其中的图片不纳入代码许可，详见[第三方许可说明](THIRD_PARTY_NOTICES.md)。

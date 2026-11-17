@@ -5,7 +5,7 @@
 | 作者 | douxiaohu |
 | 日期 | 2026-08-13 |
 | 状态 | Accepted |
-| 适用范围 | `/Users/gulinghao/Documents/telegram fastapi`（公开 Telegram 资讯 + GitHub 趋势 + 单管理员后台） |
+| 适用范围 | 本仓库项目根目录（公开 Telegram 资讯 + GitHub 趋势 + 单管理员后台） |
 
 ---
 
