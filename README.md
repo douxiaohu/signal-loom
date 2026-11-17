@@ -368,7 +368,7 @@ docker compose up -d --no-build telegram-forwarder
 curl -fsS http://127.0.0.1:8000/health
 ```
 
-升级后检查公开页面、媒体、分享导出和匿名管理 API 的 401。**前端回滚使用旧镜像，保留当前数据库**，避免覆盖发布后正常采集的数据。线上实际发布过程与回滚信息见[发布记录](docs/releases/2026-11-17-share-website-link-release.md)。
+升级后检查公开页面、媒体、分享导出和匿名管理 API 的 401。**前端回滚使用旧镜像，保留当前数据库**，避免覆盖发布后正常采集的数据。线上实际发布过程与回滚信息见[发布记录](docs/releases/2026-11-17-signal-loom-brand-release.md)。
 
 ## 目录导航
 
@@ -404,6 +404,7 @@ app/ · tests/           历史 Python 实现与测试
 | 完整环境配置 | [`.env.example`](.env.example) |
 | 纸张阅读室与动效集成 | [界面设计决定](docs/architecture/notes/implemented/feature/2026-11-17-editorial-assembly-reading-room.md) |
 | 长文、多图与分页导出 | [媒体与分享修复](docs/architecture/notes/implemented/bug-fix/2026-11-17-complete-media-and-paged-share-cards.md) |
+| 拾讯品牌、四语言文档与上线 | [本次发布记录](docs/releases/2026-11-17-signal-loom-brand-release.md) |
 | 界面发布与回滚 | [前端发布记录](docs/releases/2026-11-17-editorial-ui-release.md) |
 | 分享网站链接上线 | [链接修正发布](docs/releases/2026-11-17-share-website-link-release.md) |
 | 早期架构取舍 | [模块化单体设计（历史设计，含 Python 阶段）](docs/architecture/2026-08-13-modular-monolith.md) |

@@ -298,7 +298,7 @@ curl -fsS http://127.0.0.1:8000/health
 | 完全な環境設定 | [`.env.example`](.env.example) |
 | 閲覧室と動きの設計 | [設計記録・中国語](docs/architecture/notes/implemented/feature/2026-11-17-editorial-assembly-reading-room.md) |
 | 画像と共有カード | [実装記録・中国語](docs/architecture/notes/implemented/bug-fix/2026-11-17-complete-media-and-paged-share-cards.md) |
-| リリースと復旧 | [運用記録・中国語](docs/releases/2026-11-17-share-website-link-release.md) |
+| リリースと復旧 | [運用記録・中国語](docs/releases/2026-11-17-signal-loom-brand-release.md) |
 | ディレクトリ構成 | [中国語リファレンス](README.md#目录导航) |
 | セキュリティ | [SECURITY.md](SECURITY.md) |
 | ライセンス | [MIT](LICENSE) · [第三者の権利表示](THIRD_PARTY_NOTICES.md) |
