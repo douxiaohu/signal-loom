@@ -91,6 +91,19 @@ def package(args):
     inspect_package(target)
     print(json.dumps({'release': release, 'archive': str(target), 'sha256': digest(target.read_bytes()), 'files': len(payload)}))
 
+def strip_prefix(value, prefix):
+    return value[len(prefix):] if value.startswith(prefix) else value
+
+def mounted_database_path(source, database_url):
+    if not database_url.startswith('sqlite:///'):
+        raise ValueError('Only SQLite database URLs are supported')
+    name = strip_prefix(database_url, 'sqlite:///')
+    name = strip_prefix(name, '/app/data/') if name.startswith('/app/data/') else strip_prefix(name, './data/')
+    if Path(name).is_absolute() or '..' in Path(name).parts or not name:
+        raise ValueError('Database path must resolve under the persistent data mount')
+    return Path(source) / name
+
+
 def backup_database(source, target):
     target = Path(target)
     if target.exists():
@@ -178,14 +191,7 @@ def apply(args):
         raise ValueError('Expected persistent /app/data mount')
     environment = dict(item.split('=', 1) for item in old['Config']['Env'])
     db_url = environment.get('DATABASE_URL', 'sqlite:///./data/telegram_forwarder.db')
-    db_path = db_url.removeprefix('sqlite:///')
-    if db_path.startswith('/app/data/'):
-        db_path = db_path.removeprefix('/app/data/')
-    else:
-        db_path = db_path.removeprefix('./data/')
-    if Path(db_path).is_absolute() or '..' in Path(db_path).parts:
-        raise ValueError('Database path must resolve under the persistent data mount')
-    db = Path(data_mount['Source']) / db_path
+    db = mounted_database_path(data_mount['Source'], db_url)
     backup_database(db, backup / 'database.db')
     with sqlite3.connect(db.resolve().as_uri() + '?mode=ro', uri=True) as conn:
         baseline_sources = list(conn.execute('SELECT chat_id,enabled,public_visible FROM sources ORDER BY chat_id'))
@@ -237,7 +243,7 @@ def apply(args):
         current = wait_health(args.container, args.port)
         for name, sha in meta['files'].items():
             if name.startswith('dist/'):
-                code, body = http(args.port, '/' + name.removeprefix('dist/'))
+                code, body = http(args.port, '/' + strip_prefix(name, 'dist/'))
                 if code != 200 or digest(body) != sha: raise ValueError('HTTP artifact mismatch: ' + name)
         if http(args.port, '/api/admin/sources')[0] != 401: raise ValueError('Anonymous admin API was accessible')
         with sqlite3.connect(db.resolve().as_uri() + '?mode=ro', uri=True) as conn:
@@ -260,6 +266,7 @@ def deploy(args):
         result = subprocess.run(ssh + [command], input=data)
         if result.returncode: raise RuntimeError('Remote release operation failed')
     q = shlex.quote
+    remote("python3 -c 'import sys; assert sys.version_info >= (3, 8), \"Python 3.8+ required\"'")
     remote('umask 077; mkdir -p ' + q(stage) + '; cat > ' + q(stage + '/release.tar.gz'), archive.read_bytes())
     remote('umask 077; cat > ' + q(stage + '/release.py'), Path(__file__).read_bytes())
     command = ['python3', stage + '/release.py', '_apply', stage + '/release.tar.gz', '--sha256', digest(archive.read_bytes()), '--app', args.app, '--container', args.container, '--port', str(args.port), '--public-url', args.public_url]

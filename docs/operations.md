@@ -23,7 +23,7 @@ docker compose -f docker-compose.yml -f docker-compose.server.yml up -d --build
 
 ## SQLite 在线备份与恢复演练
 
-本机安装 Python 3 即可，不要求 sqlite3 命令行工具：
+本机安装 Python 3.8+ 即可，不要求 sqlite3 命令行工具：
 
 ```bash
 python3 scripts/release.py backup \
@@ -35,7 +35,7 @@ python3 scripts/release.py backup \
 
 ## 构建可验证制品
 
-需要 Go 1.27.4+、Node.js 22、Python 3 与经校验的 Gitleaks 8.30.1。先提交代码，保证发布版本对应明确的提交。
+需要 Go 1.27.4+、Node.js 22、Python 3.8+ 与经校验的 Gitleaks 8.30.1。先提交代码，保证发布版本对应明确的提交。
 
 ```bash
 go test -race ./...
@@ -60,7 +60,7 @@ ARM64 服务器使用 `GOARCH=arm64` 和 `--platform linux/arm64`。打包器要
 
 ## 发布到现有服务器
 
-现有应用目录应具有 `docker-compose.yml`，服务名为 `telegram-forwarder`，持久化目录挂载到 `/app/data`。Docker 和 Python 3 需已安装，SSH 使用现有密钥或代理认证。工具保留原容器的环境、挂载和端口，只通过明确参数设置新的公开站点网址。
+现有应用目录应具有 `docker-compose.yml`，服务名为 `telegram-forwarder`，持久化目录挂载到 `/app/data`。Docker 和 Python 3.8+ 需已安装，SSH 使用现有密钥或代理认证。工具保留原容器的环境、挂载和端口，只通过明确参数设置新的公开站点网址。
 
 ```bash
 python3 scripts/release.py deploy outputs/releases/release.tar.gz \

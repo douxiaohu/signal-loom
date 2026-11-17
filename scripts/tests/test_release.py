@@ -12,6 +12,11 @@ spec=importlib.util.spec_from_file_location('release',Path(__file__).resolve().p
 release=importlib.util.module_from_spec(spec);spec.loader.exec_module(release)
 
 class ReleaseTests(unittest.TestCase):
+ def test_runtime_database_paths_support_existing_deployments(self):
+  for url in ('sqlite:///./data/telegram_forwarder.db','sqlite:////app/data/telegram_forwarder.db'):
+   self.assertEqual(release.mounted_database_path('/persistent',url),Path('/persistent/telegram_forwarder.db'))
+  for url in ('postgres://database','sqlite:////etc/passwd','sqlite:///../outside.db'):
+   with self.assertRaises(ValueError):release.mounted_database_path('/persistent',url)
  def test_online_backup_includes_wal_and_refuses_overwrite(self):
   with tempfile.TemporaryDirectory() as folder:
    source=Path(folder)/'source.db';target=Path(folder)/'backup.db'
