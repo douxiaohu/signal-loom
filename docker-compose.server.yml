@@ -1,0 +1,10 @@
+# Optional server-specific network. Apply together with docker-compose.yml.
+version: "3.3"
+services:
+  telegram-forwarder:
+    networks:
+      - default
+      - ai-internal
+networks:
+  ai-internal:
+    external: true

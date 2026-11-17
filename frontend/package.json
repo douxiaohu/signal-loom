@@ -7,20 +7,23 @@
     "test": "vitest run",
     "test:ui": "vitest run",
     "test:e2e": "playwright test",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "docs:screenshots": "node scripts/capture-docs.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22.20.5",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^26.1.0",
+    "jsqr": "^1.4.0",
     "typescript": "^5.6.3",
-    "vite": "^6.4.3",
-    "vitest": "^3.2.7"
+    "vite": "^6.4.6",
+    "vitest": "^5.1.0"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
@@ -29,6 +32,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.24.0",
+    "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tailwindcss": "^4.3.3"

@@ -83,6 +83,8 @@ func (h *AdminHandler) RegisterRoutes(r chi.Router) {
 	r.Group(func(p chi.Router) {
 		p.Use(middleware.RequireAuth(h.sessions))
 
+		p.Get("/api/admin/cache", h.CacheUsage)
+		p.Post("/api/admin/cache/prune", h.PruneCache)
 		p.Get("/api/admin/sources", h.ListSources)
 		p.Post("/api/admin/sources", h.CreateSource)
 		p.Patch("/api/admin/sources/{chatId}", h.PatchSource)
@@ -868,4 +870,31 @@ func (h *AdminHandler) UpdateFeedback(w http.ResponseWriter, r *http.Request) {
 	default:
 		RespondJSON(w, http.StatusOK, fb)
 	}
+}
+
+func (h *AdminHandler) CacheUsage(w http.ResponseWriter, r *http.Request) {
+	usage, err := h.media.cache.Usage(h.cfg.MediaCacheMaxBytes, h.cfg.MediaCacheMaxAge)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	RespondJSON(w, 200, usage)
+}
+func (h *AdminHandler) PruneCache(w http.ResponseWriter, r *http.Request) {
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(2 * time.Minute))
+	var req struct{}
+	if apiErr := decodeJSON(w, r, &req, maxAdminBody); apiErr != nil {
+		apiErr.write(w)
+		return
+	}
+	if _, err := h.media.cache.InitializeRetention(h.cfg.MediaCacheMaxAge); err != nil {
+		internalError(w, r, err)
+		return
+	}
+	usage, err := h.media.cache.Prune(h.cfg.MediaCacheMaxBytes, h.cfg.MediaCacheMaxAge)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	RespondJSON(w, 200, usage)
 }

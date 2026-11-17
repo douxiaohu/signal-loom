@@ -4,7 +4,14 @@ import type { AdminView } from "../types";
 
 export function readViewFromUrl(): AdminView {
   const view = new URLSearchParams(window.location.search).get("view");
-  if (view === "sources" || view === "visits" || view === "alerts" || view === "messages") return view;
+  if (
+    view === "cache" ||
+    view === "sources" ||
+    view === "visits" ||
+    view === "alerts" ||
+    view === "messages"
+  )
+    return view;
   return "overview";
 }
 
@@ -19,7 +26,8 @@ export function useAdminView() {
     else params.set("view", next);
     const search = params.toString();
     const url = `${window.location.pathname}${search ? `?${search}` : ""}`;
-    if (`${window.location.pathname}${window.location.search}` !== url) window.history.pushState(null, "", url);
+    if (`${window.location.pathname}${window.location.search}` !== url)
+      window.history.pushState(null, "", url);
     setView(next);
   }, []);
 

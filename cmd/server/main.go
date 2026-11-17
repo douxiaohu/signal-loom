@@ -77,6 +77,36 @@ func run() error {
 		}
 	})
 
+	initializedRetention := true
+	if adopted, err := mediaCache.InitializeRetention(cfg.MediaCacheMaxAge); err != nil {
+		log.Printf("[media] retention initialization: %v", err)
+		initializedRetention = false
+	} else if adopted > 0 {
+		log.Printf("[media] granted a retention window to %d legacy cache files", adopted)
+	}
+	maintenanceCtx, stopMaintenance := context.WithCancel(context.Background())
+	defer stopMaintenance()
+	if initializedRetention {
+		safe.Go("media cache maintenance", func() {
+			prune := func() {
+				if _, err := mediaCache.Prune(cfg.MediaCacheMaxBytes, cfg.MediaCacheMaxAge); err != nil {
+					log.Printf("[media] cache maintenance: %v", err)
+				}
+			}
+			prune()
+			ticker := time.NewTicker(15 * time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-maintenanceCtx.Done():
+					return
+				case <-ticker.C:
+					prune()
+				}
+			}
+		})
+	}
+
 	collector := scheduler.NewCollector(sourceRepo, msgRepo, alertRepo,
 		crawler.NewTelegramCrawler(20*time.Second), mediaCache, cfg.CrawlInterval)
 	collector.Start()

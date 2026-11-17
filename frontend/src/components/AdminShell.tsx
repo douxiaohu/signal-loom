@@ -1,17 +1,30 @@
-import { History, LayoutDashboard, RadioTower, Search, ShieldAlert } from "lucide-react";
+import {
+  HardDrive,
+  History,
+  LayoutDashboard,
+  RadioTower,
+  Search,
+  ShieldAlert,
+} from "lucide-react";
 
+import { useSite } from "../site";
 import ShinyText from "../bits/ShinyText";
 import SpotlightCard from "../bits/SpotlightCard";
 import { Button } from "@/components/ui/button";
 import { ThemeSelect } from "../theme";
 import type { AdminView } from "../types";
 
-const items: Array<{ id: AdminView; label: string; icon: typeof LayoutDashboard }> = [
+const items: Array<{
+  id: AdminView;
+  label: string;
+  icon: typeof LayoutDashboard;
+}> = [
   { id: "overview", label: "概览", icon: LayoutDashboard },
   { id: "sources", label: "来源采集", icon: RadioTower },
   { id: "visits", label: "访问记录", icon: History },
   { id: "alerts", label: "规则命中", icon: ShieldAlert },
-  { id: "messages", label: "消息检索", icon: Search }
+  { id: "messages", label: "消息检索", icon: Search },
+  { id: "cache", label: "缓存空间", icon: HardDrive },
 ];
 
 type AdminShellProps = {
@@ -21,14 +34,22 @@ type AdminShellProps = {
   children: React.ReactNode;
 };
 
-export default function AdminShell({ view, onChangeView, onLogout, children }: AdminShellProps) {
+export default function AdminShell({
+  view,
+  onChangeView,
+  onLogout,
+  children,
+}: AdminShellProps) {
+  const site = useSite();
   return (
     <div className="admin-app">
       <div className="admin-ambient" aria-hidden="true" />
       <aside className="admin-sidebar">
         <div className="admin-brand">
-          <strong><ShinyText text="管理中心" /></strong>
-          <small>拾讯 · Signal Loom</small>
+          <strong>
+            <ShinyText text="管理中心" />
+          </strong>
+          <small>{site.name} · Signal Loom</small>
         </div>
         <nav className="admin-menu" aria-label="后台模块">
           {items.map((item) => {
@@ -50,7 +71,14 @@ export default function AdminShell({ view, onChangeView, onLogout, children }: A
         </nav>
         <div className="admin-footer">
           <ThemeSelect />
-          <Button variant="outline" className="admin-logout" type="button" onClick={onLogout}>退出</Button>
+          <Button
+            variant="outline"
+            className="admin-logout"
+            type="button"
+            onClick={onLogout}
+          >
+            退出
+          </Button>
         </div>
       </aside>
       <div className="admin-content">{children}</div>

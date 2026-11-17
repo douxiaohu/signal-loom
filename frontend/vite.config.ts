@@ -16,21 +16,21 @@ function mpaEntryRoutes(): Plugin {
         }
         next();
       });
-    }
+    },
   };
 }
 
 export default defineConfig({
   plugins: [tailwindcss(), react(), mpaEntryRoutes()],
   resolve: {
-    alias: { "@": resolve(__dirname, "src") }
+    alias: { "@": resolve(__dirname, "src") },
   },
   test: {
     environment: "jsdom",
     globals: true,
     setupFiles: "./test/setup.ts",
     restoreMocks: true,
-    exclude: ["e2e/**", "node_modules/**"]
+    exclude: ["e2e/**", "node_modules/**"],
   },
   build: {
     chunkSizeWarningLimit: 250,
@@ -39,16 +39,19 @@ export default defineConfig({
     rollupOptions: {
       input: {
         public: resolve(__dirname, "index.html"),
-        admin: resolve(__dirname, "admin/index.html")
+        admin: resolve(__dirname, "admin/index.html"),
       },
       output: {
-        manualChunks: { react: ["react", "react-dom"] }
-      }
-    }
+        manualChunks: {
+          react: ["react", "react-dom"],
+          "qr-code": ["qrcode/lib/browser"],
+        },
+      },
+    },
   },
   server: {
     proxy: {
-      "/api": { target: "http://127.0.0.1:8000", changeOrigin: false }
-    }
-  }
+      "/api": { target: "http://127.0.0.1:8000", changeOrigin: false },
+    },
+  },
 });

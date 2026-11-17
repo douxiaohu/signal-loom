@@ -1,6 +1,8 @@
-# 全栈架构审计与分阶段实施方案
+# 全栈架构审计与分阶段实施方案（历史 Python 阶段）
 
-> 范围：当前主干的 React 多入口、FastAPI、Telegram 采集、GitHub 排行、告警、SQLite、部署与验证。本文是方案，不实施运行时代码变更。既有设计约束见 `2026-08-13-modular-monolith.md`，本方案不改变单容器、单进程、单 SQLite 的默认部署。
+> 本文为 Python/FastAPI 阶段历史方案，描述不代表现行 Go 主干。当前架构见[Go 运行架构](current-go-runtime.md)。
+
+> 历史范围：当时主干的 React 多入口、FastAPI、Telegram 采集、GitHub 排行、告警、SQLite、部署与验证。本文是方案，不实施运行时代码变更。既有设计约束见 `2026-08-13-modular-monolith.md`，本方案不改变单容器、单进程、单 SQLite 的默认部署。
 
 ## 结论与约束
 

@@ -1,3 +1,4 @@
+import { useI18n } from "../i18n";
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, ExternalLink, Quote } from "lucide-react";
 
@@ -10,32 +11,42 @@ const URL_REGEX = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
 const MENTION_REGEX = /(^|\s)(@[a-zA-Z0-9_]{4,32})/g;
 const TAG_REGEX = /(#[\p{L}\p{N}_]+)/gu;
 
-export default function RichContent({ content, maxCollapsedLength = 450 }: RichContentProps) {
+export default function RichContent({
+  content,
+  maxCollapsedLength = 450,
+}: RichContentProps) {
+  const { t } = useI18n();
   const isLong = content.length > maxCollapsedLength;
   const [expanded, setExpanded] = useState(false);
 
   const normalizedContent = useMemo(() => {
-    return content
-      .replace(/\r\n/g, "\n")
-      .split(/\n\s*\n/)
-      .map((block) => block.split("\n").filter(Boolean))
-      .filter((lines) => lines.length > 0)
-      // Telegram text wraps mid-sentence; only join lines that are clearly a
-      // continuation (no terminal punctuation) so real paragraph breaks stay.
-      .map((lines) =>
-        lines.reduce<string[]>((merged, line) => {
-          const prev = merged[merged.length - 1];
-          if (prev && !/[。！？；：…)）]\s*$/.test(prev) && !/^[\d一二三四五六七八九十]+[.、)）]/.test(line)) {
-            merged[merged.length - 1] = `${prev}${line}`;
-          } else {
-            merged.push(line);
-          }
-          return merged;
-        }, [])
-      )
-      .flat()
-      .join("\n\n")
-      .trim();
+    return (
+      content
+        .replace(/\r\n/g, "\n")
+        .split(/\n\s*\n/)
+        .map((block) => block.split("\n").filter(Boolean))
+        .filter((lines) => lines.length > 0)
+        // Telegram text wraps mid-sentence; only join lines that are clearly a
+        // continuation (no terminal punctuation) so real paragraph breaks stay.
+        .map((lines) =>
+          lines.reduce<string[]>((merged, line) => {
+            const prev = merged[merged.length - 1];
+            if (
+              prev &&
+              !/[。！？；：…)）]\s*$/.test(prev) &&
+              !/^[\d一二三四五六七八九十]+[.、)）]/.test(line)
+            ) {
+              merged[merged.length - 1] = `${prev}${line}`;
+            } else {
+              merged.push(line);
+            }
+            return merged;
+          }, []),
+        )
+        .flat()
+        .join("\n\n")
+        .trim()
+    );
   }, [content]);
 
   // Paragraph structure: leading headline, quote blocks, trailing signature.
@@ -56,7 +67,7 @@ export default function RichContent({ content, maxCollapsedLength = 450 }: RichC
       const isQuote =
         !isHeader &&
         (para.startsWith("“") ||
-          para.startsWith("\"") ||
+          para.startsWith('"') ||
           para.startsWith("【") ||
           para.includes("转发自") ||
           para.includes("据介绍") ||
@@ -86,7 +97,12 @@ export default function RichContent({ content, maxCollapsedLength = 450 }: RichC
               let displayUrl = part;
               try {
                 const u = new URL(part);
-                displayUrl = u.hostname + (u.pathname !== "/" ? u.pathname.slice(0, 16) + (u.pathname.length > 16 ? "…" : "") : "");
+                displayUrl =
+                  u.hostname +
+                  (u.pathname !== "/"
+                    ? u.pathname.slice(0, 16) +
+                      (u.pathname.length > 16 ? "…" : "")
+                    : "");
               } catch {
                 // keep the raw string
               }
@@ -126,10 +142,12 @@ export default function RichContent({ content, maxCollapsedLength = 450 }: RichC
               const tagParts = sub.split(TAG_REGEX);
               return tagParts.map((tagPart, tagIdx) =>
                 tagPart.startsWith("#") && tagPart.length > 1 ? (
-                  <span key={tagIdx} className="pub-tag">{tagPart}</span>
+                  <span key={tagIdx} className="pub-tag">
+                    {tagPart}
+                  </span>
                 ) : (
                   tagPart
-                )
+                ),
               );
             });
           })}
@@ -140,7 +158,9 @@ export default function RichContent({ content, maxCollapsedLength = 450 }: RichC
 
   return (
     <div className="pub-rich">
-      <div className={`pub-rich-fold${!expanded && isLong ? " is-clipped" : ""}`}>
+      <div
+        className={`pub-rich-fold${!expanded && isLong ? " is-clipped" : ""}`}
+      >
         {paragraphs.map((p, idx) => {
           if (p.isHeader) {
             return (
@@ -178,8 +198,12 @@ export default function RichContent({ content, maxCollapsedLength = 450 }: RichC
           aria-expanded={expanded}
           onClick={() => setExpanded(!expanded)}
         >
-          <span>{expanded ? "收起全文" : "展开阅读全文"}</span>
-          {expanded ? <ChevronUp size={13} aria-hidden="true" /> : <ChevronDown size={13} aria-hidden="true" />}
+          <span>{t(expanded ? "收起全文" : "展开阅读全文")}</span>
+          {expanded ? (
+            <ChevronUp size={13} aria-hidden="true" />
+          ) : (
+            <ChevronDown size={13} aria-hidden="true" />
+          )}
         </button>
       )}
     </div>

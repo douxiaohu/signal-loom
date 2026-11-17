@@ -54,7 +54,16 @@ export type MediaItem = {
   role: string;
 };
 
-export type MediaFilter = "all" | "text" | "photo" | "video" | "document" | "animation" | "audio" | "voice" | "sticker";
+export type MediaFilter =
+  | "all"
+  | "text"
+  | "photo"
+  | "video"
+  | "document"
+  | "animation"
+  | "audio"
+  | "voice"
+  | "sticker";
 
 export type MessagePage = {
   items: Message[];
@@ -77,8 +86,12 @@ export type ManagedSource = Group & Partial<SourceAnomalyStats>;
 
 export type OperationSummary = {
   generated_at?: string;
-  sources: Array<SourceHealth & Partial<SourceAnomalyStats> & { name?: string }>;
-  unhealthy_sources: Array<SourceHealth & Partial<SourceAnomalyStats> & { name?: string }>;
+  sources: Array<
+    SourceHealth & Partial<SourceAnomalyStats> & { name?: string }
+  >;
+  unhealthy_sources: Array<
+    SourceHealth & Partial<SourceAnomalyStats> & { name?: string }
+  >;
   public_source_count?: number;
   source_count?: number;
 };
@@ -116,7 +129,13 @@ export type Session = {
   expires_at: string | number | null;
 };
 
-export type AdminView = "overview" | "sources" | "visits" | "alerts" | "messages";
+export type AdminView =
+  | "overview"
+  | "sources"
+  | "visits"
+  | "alerts"
+  | "messages"
+  | "cache";
 
 export type VisitRecord = {
   id: number;
@@ -147,7 +166,13 @@ export type VisitStats = {
 
 export type AdminOverview = {
   visits: VisitStats;
-  sources: { total: number; enabled: number; public: number; unhealthy: number; items: Group[] };
+  sources: {
+    total: number;
+    enabled: number;
+    public: number;
+    unhealthy: number;
+    items: Group[];
+  };
   alerts: {
     new_count: number;
     pending_count?: number;

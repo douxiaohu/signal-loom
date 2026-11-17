@@ -1,5 +1,12 @@
+import { useI18n, translate } from "../../i18n";
 import { useRef, useState } from "react";
-import { Download, ExternalLink, FileText, ImageOff, Volume2 } from "lucide-react";
+import {
+  Download,
+  ExternalLink,
+  FileText,
+  ImageOff,
+  Volume2,
+} from "lucide-react";
 
 import type { MediaItem, Message } from "../../types";
 import type { OpenImageHandler } from "./types";
@@ -22,7 +29,7 @@ export function mediaItemsOf(message: Message): MediaItem[] {
 export default function MediaGallery({
   items,
   message,
-  onOpenImage
+  onOpenImage,
 }: {
   items: MediaItem[];
   message: Message;
@@ -40,7 +47,12 @@ export default function MediaGallery({
     return (
       <div className={`pub-media-single${plain ? " is-plain" : ""}`}>
         <div className="pub-media-cell">
-          <MediaAttachment item={items[0]} message={message} index={0} onOpenImage={onOpenImage} />
+          <MediaAttachment
+            item={items[0]}
+            message={message}
+            index={0}
+            onOpenImage={onOpenImage}
+          />
         </div>
       </div>
     );
@@ -50,7 +62,12 @@ export default function MediaGallery({
     <div className={`pub-media-grid${count > 4 ? " is-many" : ""}`}>
       {items.map((item, idx) => (
         <div key={idx} className="pub-media-cell">
-          <MediaAttachment item={item} message={message} index={idx} onOpenImage={onOpenImage} />
+          <MediaAttachment
+            item={item}
+            message={message}
+            index={idx}
+            onOpenImage={onOpenImage}
+          />
         </div>
       ))}
     </div>
@@ -61,18 +78,19 @@ function MediaAttachment({
   item,
   message,
   index,
-  onOpenImage
+  onOpenImage,
 }: {
   item: MediaItem;
   message: Message;
   index: number;
   onOpenImage: OpenImageHandler;
 }) {
+  const { t } = useI18n();
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const imageButtonRef = useRef<HTMLButtonElement>(null);
-  const source = message.chat_title || "未知来源";
-  const speaker = message.sender_name || "未知发送者";
+  const source = message.chat_title || t("未知来源");
+  const speaker = message.sender_name || t("未知发送者");
   const kind = item.kind.toLowerCase();
   const type = (message.media_type || kind).toLowerCase();
   const fallbackUrl = message.source_url || item.url;
@@ -85,12 +103,16 @@ function MediaAttachment({
         target="_blank"
         rel="noopener noreferrer"
       >
-        <span className="pub-attachment-icon" aria-hidden="true"><ImageOff size={17} /></span>
-        <span className="pub-attachment-copy">
-          <strong>媒体加载失败</strong>
-          <small>点击打开原文查看</small>
+        <span className="pub-attachment-icon" aria-hidden="true">
+          <ImageOff size={17} />
         </span>
-        <span className="pub-attachment-cta"><ExternalLink size={13} /></span>
+        <span className="pub-attachment-copy">
+          <strong>{t("媒体加载失败")}</strong>
+          <small>{t("点击打开原文查看")}</small>
+        </span>
+        <span className="pub-attachment-cta">
+          <ExternalLink size={13} />
+        </span>
       </a>
     );
   }
@@ -103,7 +125,7 @@ function MediaAttachment({
           className="audio-control"
           controls
           preload="metadata"
-          aria-label={`${source}中的音频`}
+          aria-label={t("{source}中的音频", { source })}
           onError={() => setFailed(true)}
         >
           <source src={item.url} />
@@ -114,14 +136,21 @@ function MediaAttachment({
 
   if (["document", "file"].includes(kind) || type === "document") {
     return (
-      <a className="pub-attachment file-card" href={item.url} download aria-label="下载文件">
-        <span className="pub-attachment-icon" aria-hidden="true"><FileText size={17} /></span>
+      <a
+        className="pub-attachment file-card"
+        href={item.url}
+        download
+        aria-label={t("下载文件")}
+      >
+        <span className="pub-attachment-icon" aria-hidden="true">
+          <FileText size={17} />
+        </span>
         <span className="pub-attachment-copy">
-          <strong>附件文件</strong>
-          <small>点击下载</small>
+          <strong>{t("附件文件")}</strong>
+          <small>{t("点击下载")}</small>
         </span>
         <span className="pub-attachment-cta">
-          <Download size={14} aria-hidden="true" /> <span>下载</span>
+          <Download size={14} aria-hidden="true" /> <span>{t("下载")}</span>
         </span>
       </a>
     );
@@ -133,7 +162,7 @@ function MediaAttachment({
         className="pub-media-video"
         controls
         preload="metadata"
-        aria-label={`${source}中的视频`}
+        aria-label={t("{source}中的视频", { source })}
         onError={() => setFailed(true)}
       >
         <source src={item.url} />
@@ -146,22 +175,32 @@ function MediaAttachment({
       ref={imageButtonRef}
       className="pub-media-trigger"
       type="button"
-      aria-label={`查看完整图片 ${index + 1}`}
+      aria-label={t("查看完整图片 {n}", { n: index + 1 })}
       onClick={() =>
         onOpenImage(
           {
             src: item.original_url || item.url,
-            alt: `${source}中${speaker}发布的完整图片 ${index + 1}`
+            alt: t("{source}中{speaker}发布的完整图片 {n}", {
+              source,
+              speaker,
+              n: index + 1,
+            }),
           },
-          imageButtonRef.current
+          imageButtonRef.current,
         )
       }
     >
-      {!loaded ? <span className="pub-media-loading" aria-hidden="true" /> : null}
+      {!loaded ? (
+        <span className="pub-media-loading" aria-hidden="true" />
+      ) : null}
       <img
         className={`pub-media-img media-image-contained${loaded ? " is-loaded" : ""}`}
         src={item.url}
-        alt={`${source}中${speaker}发布的图片 ${index + 1}`}
+        alt={t("{source}中{speaker}发布的图片 {n}", {
+          source,
+          speaker,
+          n: index + 1,
+        })}
         loading="lazy"
         decoding="async"
         onLoad={() => setLoaded(true)}

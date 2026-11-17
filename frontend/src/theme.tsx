@@ -1,6 +1,7 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import { Moon, Sun } from "lucide-react";
 
+import { useI18n } from "./i18n";
 import { safeStorage } from "./lib/storage";
 
 export type ThemeId = "midnight" | "aurora" | "ember" | "paper";
@@ -9,19 +10,24 @@ const options: Array<[ThemeId, string]> = [
   ["paper", "白色"],
   ["midnight", "午夜蓝"],
   ["aurora", "极光绿"],
-  ["ember", "余烬橙"]
+  ["ember", "余烬橙"],
 ];
 const themeColor: Record<ThemeId, string> = {
   paper: "#f5f6f8",
   midnight: "#0b0f17",
   aurora: "#08120f",
-  ember: "#120d09"
+  ember: "#120d09",
 };
 const storageKey = "tm-theme";
 const themeEvent = "tm-theme-change";
 
 function isThemeId(value: unknown): value is ThemeId {
-  return value === "midnight" || value === "aurora" || value === "ember" || value === "paper";
+  return (
+    value === "midnight" ||
+    value === "aurora" ||
+    value === "ember" ||
+    value === "paper"
+  );
 }
 
 function readTheme(): ThemeId {
@@ -31,7 +37,9 @@ function readTheme(): ThemeId {
 
 function applyTheme(theme: ThemeId) {
   document.documentElement.dataset.theme = theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", themeColor[theme]);
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", themeColor[theme]);
 }
 
 function setTheme(theme: ThemeId) {
@@ -46,7 +54,10 @@ export function initializePublicTheme() {
 }
 
 export function useStoredTheme(): ThemeId {
-  const currentTheme = () => isThemeId(document.documentElement.dataset.theme) ? document.documentElement.dataset.theme : readTheme();
+  const currentTheme = () =>
+    isThemeId(document.documentElement.dataset.theme)
+      ? document.documentElement.dataset.theme
+      : readTheme();
   const [theme, setState] = useState<ThemeId>(currentTheme);
   useEffect(() => {
     applyTheme(currentTheme());
@@ -61,12 +72,23 @@ export function useStoredTheme(): ThemeId {
 }
 
 export function ReadingLightSwitch() {
+  const { t } = useI18n();
   const theme = useStoredTheme();
   const night = theme !== "paper";
   return (
-    <button className="reading-light" type="button" aria-label={night ? "切换到日间" : "切换到夜间"} aria-pressed={night} onClick={() => setTheme(night ? "paper" : "midnight")}>
-      {night ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
-      <span>{night ? "夜间" : "日间"}</span>
+    <button
+      className="reading-light"
+      type="button"
+      aria-label={t(night ? "切换到日间" : "切换到夜间")}
+      aria-pressed={night}
+      onClick={() => setTheme(night ? "paper" : "midnight")}
+    >
+      {night ? (
+        <Moon size={15} aria-hidden="true" />
+      ) : (
+        <Sun size={15} aria-hidden="true" />
+      )}
+      <span>{t(night ? "夜间" : "日间")}</span>
     </button>
   );
 }
@@ -88,7 +110,11 @@ export function ThemeSwitcher() {
           title={`${label}主题`}
           onClick={() => setTheme(value)}
         >
-          <span className="theme-switch-dot" data-theme-id={value} aria-hidden="true" />
+          <span
+            className="theme-switch-dot"
+            data-theme-id={value}
+            aria-hidden="true"
+          />
         </button>
       ))}
     </div>
@@ -107,7 +133,9 @@ export function ThemeSelect() {
       <span className="theme-picker-label">主题</span>
       <select aria-label="界面主题" value={theme} onChange={onChange}>
         {options.map(([value, label]) => (
-          <option key={value} value={value}>{label}</option>
+          <option key={value} value={value}>
+            {label}
+          </option>
         ))}
       </select>
     </label>

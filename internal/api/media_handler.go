@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -74,7 +73,7 @@ func (m *mediaServer) serve(w http.ResponseWriter, r *http.Request, req *mediaRe
 	// The download may take a while and the transfer longer still.
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(mediaWriteTimeout))
 
-	res, err := m.cache.Get(r.Context(), media.Ref{
+	f, res, err := m.cache.Open(r.Context(), media.Ref{
 		ChatID:    req.msg.ChatID,
 		MessageID: req.msg.ID,
 		Index:     req.index,
@@ -85,11 +84,6 @@ func (m *mediaServer) serve(w http.ResponseWriter, r *http.Request, req *mediaRe
 		return
 	}
 
-	f, err := os.Open(res.Path)
-	if err != nil {
-		internalError(w, r, err)
-		return
-	}
 	defer f.Close()
 	info, err := f.Stat()
 	if err != nil {

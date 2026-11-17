@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+# Exact synthetic values in one configuration-parser test, not a directory-wide exception.
+[[allowlists]]
+description = "Known synthetic configuration fixtures; all other files and values remain scanned"
+condition = "AND"
+paths = ['''(^|/)internal/config/config_test\.go$''']
+regexTarget = "secret"
+regexes = ['''^(0123456789abcdef(0123456789abcdef)?|quoted-key-0123456789|single-quoted-secret-0123456789abc)$''']

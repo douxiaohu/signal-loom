@@ -8,7 +8,7 @@
 
 Una sala de lectura autohospedada para canales públicos de Telegram, con imágenes completas y publicaciones fáciles de compartir.
 
-![Go 1.26+](https://img.shields.io/badge/Go-1.26%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
+![Go 1.27.4+](https://img.shields.io/badge/Go-1.27.4%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![SQLite](https://img.shields.io/badge/SQLite-single_instance-526B44?style=flat-square&logo=sqlite&logoColor=white)
 [![MIT](https://img.shields.io/badge/License-MIT-526B44?style=flat-square)](LICENSE)
@@ -63,7 +63,7 @@ El botón de destellos de cada publicación genera tarjetas para compartir. El t
 - Copia la página actual, descarga un PNG o todas las páginas en un ZIP.
 - Cada página repite la fuente, el número de página y el enlace al sitio.
 - Las imágenes no disponibles mantienen un aviso numerado para consultar el original.
-- El enlace actual es `https://douxiaohu.duckdns.org`. Para tu despliegue, cambia `WEBSITE_URL` en [`shareCard.ts`](frontend/src/lib/shareCard.ts).
+- Configura el origen del sitio mediante `PUBLIC_BASE_URL`. Cada página incluye su enlace `/message/:id` y un QR con la misma dirección. Si está vacío, se usa el origen actual, sin editar código.
 
 <details>
 <summary>Última página con imagen y enlace al sitio</summary>
@@ -129,7 +129,35 @@ Consulta recuentos diarios, recientes y acumulados por IP, junto con hora, ruta,
 
 </details>
 
-> Las 14 capturas se tomaron en un navegador local con el frontend actual y datos de demostración aislados: publicaciones, ilustraciones y estadísticas. Las IP pertenecen a rangos reservados para documentación. No se muestran claves ni datos del panel de producción. La interfaz de la aplicación está actualmente principalmente en chino; esta edición traduce la documentación del proyecto.
+> Las 18 capturas se tomaron en un navegador local con el frontend actual y datos de demostración aislados: publicaciones, ilustraciones y estadísticas. Las IP pertenecen a rangos reservados para documentación. No se muestran claves ni datos del panel de producción. La interfaz pública admite chino simplificado, inglés, japonés y español. Las publicaciones conservan su idioma original; el panel de administración sigue en chino.
+
+### 07 · Guarda y retoma tu lectura
+
+Los marcadores guardan solo los IDs en este dispositivo. Al abrirlos se comprueban otra vez los permisos públicos; las fuentes privadas o desactivadas dejan de estar disponibles. Puedes continuar con los filtros y la posición guardados.
+
+![Publicaciones guardadas](docs/images/saved-stories.png)
+
+<details><summary>Enlaces individuales y códigos QR</summary>
+
+Cada mensaje tiene una dirección `/message/:id`, que también puedes abrir escaneando el QR de su tarjeta.
+
+![Página individual de un mensaje](docs/images/message-detail.png)
+
+</details>
+
+### 08 · Cuatro idiomas y control de caché
+
+La interfaz pública, las fechas y las tarjetas admiten chino, inglés, japonés y español. El contenido original no se traduce. Los diccionarios y el generador QR se cargan cuando hacen falta.
+
+![Interfaz de lectura en inglés](docs/images/english-reading.png)
+
+<details><summary>Espacio de caché en el panel</summary>
+
+El valor predeterminado es 5 GiB y 30 días, revisado al iniciar y cada 15 minutos. Consulta el uso y los archivos, o ejecuta el mantenimiento. No elimina mensajes de la base de datos.
+
+![Control de caché](docs/images/admin-cache.png)
+
+</details>
 
 ## Arquitectura y acceso
 
@@ -178,13 +206,12 @@ APP_GID=1000
 En Linux, ajusta `APP_UID` y `APP_GID` a los IDs del usuario de despliegue para permitir la escritura en los directorios persistentes. Deja `HOST` vacío dentro del contenedor y conserva el puerto 8000.
 
 ```bash
-docker network inspect ai-internal >/dev/null 2>&1 || docker network create ai-internal
 docker compose up -d --build
 docker compose ps
 curl -fsS http://127.0.0.1:8000/health
 ```
 
-Compose usa la red externa `ai-internal` y publica únicamente en **127.0.0.1:8000**. Utiliza un proxy HTTPS en el mismo servidor. Las cookies seguras del panel requieren HTTPS.
+Compose funciona sin redes externas y publica únicamente en **127.0.0.1:8000**. Utiliza un proxy HTTPS en el mismo servidor. Las cookies seguras del panel requieren HTTPS.
 
 ```caddy
 signal.example.com {
@@ -209,7 +236,7 @@ El entorno Go admite actualmente **solo `telegram_public`**. La recopilación me
 
 ## Desarrollo local
 
-Usa **Go 1.26+, Node.js 22 LTS y npm**. Python no es necesario para ejecutar la versión actual. Prepara antes los archivos de configuración indicados arriba.
+Usa **Go 1.27.4+, Node.js 22 LTS y npm**. Python no es necesario para ejecutar la versión actual. Prepara antes los archivos de configuración indicados arriba.
 
 ```bash
 cd frontend
@@ -234,6 +261,9 @@ Consulta todos los valores en [`.env.example`](.env.example). Las variables del 
 
 | Variable | Uso / valor predeterminado |
 | --- | --- |
+| `SITE_NAME` / `SITE_DESCRIPTION` | Nombre y descripción del sitio en ejecución |
+| `PUBLIC_BASE_URL` | Origen para enlaces y QR; origen actual si está vacío |
+| `MEDIA_CACHE_MAX_BYTES` / `MEDIA_CACHE_MAX_AGE_DAYS` | Cuota total / retención; 5 GiB / 30 días |
 | `APP_ENV` | `production`, `staging`, `development` o `test`; un valor desconocido impide iniciar |
 | `ADMIN_API_KEY` / `SESSION_SECRET` | Clave administrativa de al menos 16 caracteres / secreto HMAC de al menos 32 bytes |
 | `SESSION_COOKIE_SECURE` / `SESSION_TTL_HOURS` | Cookie HTTPS / duración de sesión; `true` / `12` |
@@ -268,33 +298,28 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Las pruebas de navegador cubren anchos de 1440, 768 y 390 px con datos de API de prueba: búsqueda, imágenes, animaciones, temas, permisos y tarjetas con texto largo y varias imágenes. No escriben en producción. La compilación controla presupuestos de JavaScript sin comprimir: 260 KiB para lectura, 36 KiB para Assembly y 16 KiB para compartir, estos dos últimos cargados bajo demanda.
+Las pruebas de navegador cubren anchos de 1440, 768 y 390 px con datos de API de prueba: búsqueda, imágenes, animaciones, temas, permisos y tarjetas con texto largo y varias imágenes. No escriben en producción. La compilación controla presupuestos de JavaScript sin comprimir: 280 KiB para lectura, 36 KiB para Assembly y 16 KiB para compartir, estos dos últimos cargados bajo demanda.
 
 ## Copias de seguridad y actualizaciones
 
-Usa la copia de seguridad en línea de SQLite con bases WAL. Copiar solo el archivo principal mientras está activo puede perder cambios.
+La copia en línea incluye los cambios confirmados en WAL:
 
 ```bash
-mkdir -p backups
-sqlite3 data/telegram_forwarder.db ".backup 'backups/telegram-forwarder-before-upgrade.db'"
+python3 scripts/release.py backup data/telegram_forwarder.db backups/before-upgrade.db
 ```
 
-Guarda también medios, configuración de producción y referencia de la imagen actual. Conserva los recursos antiguos del frontend para las páginas que sigan abiertas.
+La herramienta de publicación empaqueta solo el binario, el frontend y el manifiesto de sumas. Hace una copia, verifica un candidato aislado y conserva recursos antiguos. Tras cambiar, comprueba archivos, permisos y el 401 administrativo. Si falla, restaura imagen y entorno, conservando la base actual.
 
-```bash
-git pull --ff-only
-docker compose build telegram-forwarder
-docker compose up -d --no-build telegram-forwarder
-curl -fsS http://127.0.0.1:8000/health
-```
-
-Verifica lectura pública, medios, exportación y respuestas 401 de la API administrativa sin sesión. Si reviertes solo el frontend, conserva la base actual para mantener los mensajes recopilados después del despliegue.
+Consulta [operaciones](docs/operations.md) para compilar, publicar y revertir. La red compartida es opcional mediante `docker-compose.server.yml`. GitHub Actions ejecuta pruebas, navegadores, presupuestos, verificaciones del publicador, secretos, dependencias y construcción Docker. Dependabot propone actualizaciones mediante PR.
 
 ## Documentación
 
 | Tema | Referencia |
 | --- | --- |
 | Otros idiomas | [简体中文](README.md) · [English](README.en.md) · [日本語](README.ja.md) |
+| Arquitectura actual | [Entorno Go, chino](docs/architecture/current-go-runtime.md) |
+| Publicación y copias | [Operaciones, chino](docs/operations.md) |
+| Contribuciones y cambios | [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) |
 | Configuración completa | [`.env.example`](.env.example) |
 | Lectura y animaciones | [Decisión de diseño, chino](docs/architecture/notes/implemented/feature/2026-11-17-editorial-assembly-reading-room.md) |
 | Medios y tarjetas paginadas | [Notas de implementación, chino](docs/architecture/notes/implemented/bug-fix/2026-11-17-complete-media-and-paged-share-cards.md) |

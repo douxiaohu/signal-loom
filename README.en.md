@@ -8,7 +8,7 @@
 
 A self-hosted reading room for public Telegram channels, with complete images and shareable stories.
 
-![Go 1.26+](https://img.shields.io/badge/Go-1.26%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
+![Go 1.27.4+](https://img.shields.io/badge/Go-1.27.4%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-single_instance-526B44?style=flat-square&logo=sqlite&logoColor=white)
@@ -64,7 +64,7 @@ Use the sparkle button on a post to create share cards. Text wraps using actual 
 - Copy the current page, download one PNG, or download all pages in a ZIP.
 - Each page repeats the source, page number and website link.
 - An unavailable image keeps a numbered placeholder so readers can consult the original post.
-- The footer currently links to `https://douxiaohu.duckdns.org`. For your own deployment, change `WEBSITE_URL` in [`shareCard.ts`](frontend/src/lib/shareCard.ts).
+- Set `PUBLIC_BASE_URL` to your canonical origin. Each page links to `/message/:id` and includes a matching QR code. If unset, links use the current browser origin; no source edit is needed.
 
 <details>
 <summary>Last page: complete image and website link</summary>
@@ -130,7 +130,35 @@ Inspect daily, recent and cumulative IP-based counts and recent request paths, r
 
 </details>
 
-> These 14 screenshots were captured from the current frontend in a local browser with isolated demo messages, illustrations and statistics. IPs use documentation-only ranges; no production admin data or keys are shown. The application UI is currently primarily Chinese. These language editions translate the project documentation.
+> These 18 screenshots were captured from the current frontend in a local browser with isolated demo messages, illustrations and statistics. IPs use documentation-only ranges; no production admin data or keys are shown. The public UI supports Simplified Chinese, English, Japanese and Spanish. Channel posts keep their original language; the admin console is currently Chinese.
+
+### 07 · Save a story and pick up where you left off
+
+Bookmark posts locally; only message IDs are stored, and opening saved stories rechecks public permissions. Private or disabled sources become unavailable. “Continue reading” restores the saved filters and message position.
+
+![Saved stories with public permission checks](docs/images/saved-stories.png)
+
+<details><summary>Direct message links and QR codes</summary>
+
+Each post has a `/message/:id` link. Copy it from the toolbar or scan the QR code on a share card.
+
+![Direct message page](docs/images/message-detail.png)
+
+</details>
+
+### 08 · Four languages and bounded media storage
+
+Switch the public UI between Chinese, English, Japanese and Spanish. Navigation, dates, media filters and share labels follow your preference; channel content stays in its original language. Dictionaries and QR code generation load on demand.
+
+![English reading interface](docs/images/english-reading.png)
+
+<details><summary>Admin media cache controls</summary>
+
+Inspect disk use, file count and retention. Defaults are 5 GiB / 30 days, checked at startup and every 15 minutes. Maintenance removes cached media, never database messages.
+
+![Cache usage and maintenance](docs/images/admin-cache.png)
+
+</details>
 
 ## Runtime and access
 
@@ -194,10 +222,9 @@ APP_GID=1000
 
 On Linux, set `APP_UID` and `APP_GID` to the deployment user's IDs so persisted directories are writable. Leave container `HOST` empty and keep the default port, 8000.
 
-The Compose file references the external network `ai-internal`:
+The default Compose setup runs independently:
 
 ```bash
-docker network inspect ai-internal >/dev/null 2>&1 || docker network create ai-internal
 docker compose up -d --build
 docker compose ps
 curl -fsS http://127.0.0.1:8000/health
@@ -228,7 +255,7 @@ The Go runtime currently supports **`telegram_public` only**. Bot collection, lo
 
 ## Local development
 
-Use **Go 1.26+, Node.js 22 LTS and npm**. Python is not needed for the current runtime.
+Use **Go 1.27.4+, Node.js 22 LTS and npm**. Python is not needed for the current runtime.
 
 ```bash
 cp .env.example .env
@@ -261,6 +288,9 @@ See [`.env.example`](.env.example) for all options. Process environment variable
 
 | Variable | Purpose / default |
 | --- | --- |
+| `SITE_NAME` / `SITE_DESCRIPTION` | Runtime site name and description |
+| `PUBLIC_BASE_URL` | Canonical origin for message links and QR codes; current origin if empty |
+| `MEDIA_CACHE_MAX_BYTES` / `MEDIA_CACHE_MAX_AGE_DAYS` | Soft total quota / retention; 5 GiB / 30 days |
 | `APP_ENV` | `production`, `staging`, `development` or `test`; unknown values fail startup |
 | `ADMIN_API_KEY` | Admin key; at least 16 characters |
 | `SESSION_SECRET` | Session HMAC secret; at least 32 bytes |
@@ -297,33 +327,28 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Browser tests cover 1440, 768 and 390 px widths with API fixtures, including search, image viewing, motion, themes, access boundaries and multi-image sharing. They do not write to production data. Production builds check raw JavaScript budgets of 260 KiB for reading, 36 KiB for lazy Assembly and 16 KiB for lazy sharing.
+Browser tests cover 1440, 768 and 390 px widths with API fixtures, including search, image viewing, motion, themes, access boundaries and multi-image sharing. They do not write to production data. Production builds check raw JavaScript budgets of 280 KiB for reading, 36 KiB for lazy Assembly and 16 KiB for lazy sharing.
 
 ## Backup and upgrades
 
-Use SQLite's online backup facility with WAL databases. Copying only the live main database file can miss changes.
+Use the verified online backup tool; committed WAL records are included:
 
 ```bash
-mkdir -p backups
-sqlite3 data/telegram_forwarder.db ".backup 'backups/telegram-forwarder-before-upgrade.db'"
+python3 scripts/release.py backup data/telegram_forwarder.db backups/before-upgrade.db
 ```
 
-Back up media, production configuration and the current image reference as well. Retain old frontend assets so already-open pages can still load their chunks.
+The artifact release tool packages only the Linux binary, frontend build and checksum manifest. It backs up production, checks an isolated candidate, retains old frontend assets, and verifies files, permissions and anonymous admin 401 responses after switching. Failure restores the old image and environment while keeping the current database.
 
-```bash
-git pull --ff-only
-docker compose build telegram-forwarder
-docker compose up -d --no-build telegram-forwarder
-curl -fsS http://127.0.0.1:8000/health
-```
-
-Check the public feed, media, share export and anonymous admin API 401 responses. A frontend rollback should keep the current database to preserve newly collected posts.
+See [operations](docs/operations.md) for build, deployment and rollback commands. Shared server networking is optional through `docker-compose.server.yml`. GitHub Actions runs tests, browser regressions, build budgets, package-tool tests, secret/dependency checks and a Docker build; Dependabot opens dependency update PRs.
 
 ## Documentation
 
 | Topic | Reference |
 | --- | --- |
 | Language editions | [简体中文](README.md) · [日本語](README.ja.md) · [Español](README.es.md) |
+| Runtime architecture | [Current Go architecture, Chinese](docs/architecture/current-go-runtime.md) |
+| Verified releases and backups | [Operations, Chinese](docs/operations.md) |
+| Contributing and changes | [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) |
 | Environment settings | [`.env.example`](.env.example) |
 | Reading room and motion design | [Design decision, Chinese](docs/architecture/notes/implemented/feature/2026-11-17-editorial-assembly-reading-room.md) |
 | Complete media and paginated sharing | [Implementation notes, Chinese](docs/architecture/notes/implemented/bug-fix/2026-11-17-complete-media-and-paged-share-cards.md) |

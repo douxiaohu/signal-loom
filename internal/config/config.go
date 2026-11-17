@@ -9,6 +9,7 @@ import (
 	"hash/crc32"
 	"io"
 	"net/netip"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -53,6 +54,12 @@ var privateRanges = []string{
 
 // Config holds every runtime setting of the service.
 type Config struct {
+	SiteName           string
+	SiteDescription    string
+	PublicBaseURL      string
+	MediaCacheMaxBytes int64
+	MediaCacheMaxAge   time.Duration
+
 	TelegramBotToken string // not used by the Go service; kept so old .env files still load
 	DatabasePath     string
 	Timezone         string
@@ -183,6 +190,11 @@ func buildConfig(lookup func(string) (string, bool)) (*Config, error) {
 	}
 
 	cfg := &Config{
+		SiteName:                get("SITE_NAME", "拾讯"),
+		SiteDescription:         get("SITE_DESCRIPTION", "拾起消息，织成日常。"),
+		PublicBaseURL:           strings.TrimRight(get("PUBLIC_BASE_URL", ""), "/"),
+		MediaCacheMaxBytes:      int64(parsePositiveInt(get("MEDIA_CACHE_MAX_BYTES", ""), 5<<30)),
+		MediaCacheMaxAge:        time.Duration(parsePositiveInt(get("MEDIA_CACHE_MAX_AGE_DAYS", ""), 30)) * 24 * time.Hour,
 		TelegramBotToken:        get("TELEGRAM_BOT_TOKEN", ""),
 		DatabasePath:            dbPath,
 		Timezone:                get("TIMEZONE", "Asia/Shanghai"),
@@ -206,6 +218,9 @@ func buildConfig(lookup func(string) (string, bool)) (*Config, error) {
 		MediaMaxBytes:           int64(parsePositiveInt(get("MEDIA_MAX_BYTES", ""), DefaultMediaMaxBytes)),
 	}
 
+	if err := cfg.ValidatePublicSettings(); err != nil {
+		return nil, err
+	}
 	loc, err := time.LoadLocation(cfg.Timezone)
 	if err != nil {
 		cfg.Warnings = append(cfg.Warnings, fmt.Sprintf("invalid TIMEZONE %q, falling back to UTC", cfg.Timezone))
@@ -379,4 +394,19 @@ func randomToken(n int) string {
 		panic("crypto/rand unavailable: " + err.Error())
 	}
 	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+// ValidatePublicSettings validates deployment-owned metadata, never a request Host.
+func (c *Config) ValidatePublicSettings() error {
+	if utf8.RuneCountInString(c.SiteName) > 60 || utf8.RuneCountInString(c.SiteDescription) > 300 {
+		return errors.New("site name or description is too long")
+	}
+	if c.PublicBaseURL == "" {
+		return nil
+	}
+	u, err := url.Parse(c.PublicBaseURL)
+	if err != nil || u.Hostname() == "" || (u.Scheme != "https" && u.Scheme != "http") || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Path != "" {
+		return errors.New("PUBLIC_BASE_URL must be an http(s) origin without credentials, path, query or fragment")
+	}
+	return nil
 }

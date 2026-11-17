@@ -10,7 +10,7 @@
 
 Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图分享
 
-![Go 1.26+](https://img.shields.io/badge/Go-1.26%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
+![Go 1.27.4+](https://img.shields.io/badge/Go-1.27.4%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-single_instance-526B44?style=flat-square&logo=sqlite&logoColor=white)
@@ -59,14 +59,14 @@ Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图�
 
 ### 03 · 把整篇内容，分享给另一个人
 
-点击消息右上角的星光按钮，生成带来源与网站链接的分享卡片。正文按实际字体测量换行，保留段落；全部静态图片优先使用原图，按附件顺序等比绘制。长文与多图自动分页，每页都有来源、页号和网站链接。
+点击消息右上角的星光按钮，生成带来源与网站链接的分享卡片。正文按实际字体测量换行，保留段落；全部静态图片优先使用原图，按附件顺序等比绘制。长文与多图自动分页，每页都有来源、页号、本站消息链接与二维码。
 
 ![分享卡片：正文、来源、多图分页与导出工具](docs/images/share-pages.png)
 
 - 单页逻辑尺寸不超过 1080 × 2600，输出 PNG 不超过 1620 × 3900，避免无限长画布。
 - 可复制当前页，单页下载 PNG，多页一次下载 ZIP。
 - 图片加载失败时保留带编号的提示，方便回到原文查阅。
-- 每页页脚均带 `https://douxiaohu.duckdns.org`；自部署时可在 [`frontend/src/lib/shareCard.ts`](frontend/src/lib/shareCard.ts) 修改 `WEBSITE_URL`。
+- 每页页脚使用部署者设置的 `PUBLIC_BASE_URL`，链接到 `/message/:id`；二维码指向同一条消息。网址留空时使用当前站点 origin，无需修改源码。
 
 <details>
 <summary>查看多图分享末页与网站链接</summary>
@@ -132,7 +132,37 @@ Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图�
 
 </details>
 
-> 本页 14 张截图来自当前前端的本地浏览器实拍，使用隔离的演示来源、消息、插画和统计数据；不展示真实密钥、访客地址或生产后台数据。截图界面为中文，多语言版本翻译项目介绍与操作文档，应用界面目前以中文为主。
+> 本页 18 张截图来自当前前端的本地浏览器实拍，使用隔离的演示来源、消息、插画和统计数据；不展示真实密钥、访客地址或生产后台数据。公开界面支持简体中文、English、日本語和 Español；频道原文保持原语言，管理端目前使用中文。
+
+### 07 · 收藏、继续阅读与单条消息分享
+
+点击消息书签即可收藏，收藏只在本机保存消息 ID。打开“收藏”时重新验证来源公开权限；私有化或停用后的内容会显示不可用，可以移除失效条目。阅读页提供“继续上次阅读”，恢复筛选条件与消息位置。
+
+![收藏：重新获取公开内容，不保存正文快照](docs/images/saved-stories.png)
+
+<details>
+<summary>查看本站单条消息页面</summary>
+
+每条消息提供 `/message/:id` 独立地址，可从消息工具栏复制，也可以扫描分享卡片二维码打开。公开权限与列表、媒体保持一致。
+
+![消息详情：独立链接与完整媒体](docs/images/message-detail.png)
+
+</details>
+
+### 08 · 四语言阅读与缓存维护
+
+公开页的语言选择器支持中文、English、日本語、Español，并记住本机选择。菜单、日期、媒体类型、分享文案和错误提示随语言切换，频道正文不自动翻译。非中文词典与二维码按需加载。
+
+![英文阅读：本地化导航、介绍和筛选控件](docs/images/english-reading.png)
+
+<details>
+<summary>缓存空间：容量、文件数与保留策略</summary>
+
+管理端“缓存空间”显示使用量、总量上限与保留天数，可以立即执行维护。默认 5 GiB / 30 天，启动及每 15 分钟检查；仅回收媒体缓存，不删除消息数据库。
+
+![缓存管理：容量与保留时长](docs/images/admin-cache.png)
+
+</details>
 
 ## 多语言文档
 
@@ -213,14 +243,15 @@ Linux 上将 `APP_UID`、`APP_GID` 设置为部署用户对应的 UID/GID，保�
 
 ### 3. 启动
 
-当前 Compose 引用外部网络 `ai-internal`，首次部署先创建：
+默认 Compose 可独立运行，不需要创建外部网络：
 
 ```bash
-docker network inspect ai-internal >/dev/null 2>&1 || docker network create ai-internal
 docker compose up -d --build
 docker compose ps
 curl -fsS http://127.0.0.1:8000/health
 ```
+
+如需接入已有服务器的 `ai-internal`，额外应用 `docker-compose.server.yml`，详见[运维说明](docs/operations.md)。
 
 Compose 将服务发布到 **`127.0.0.1:8000`**。生产环境通过同机 HTTPS 反向代理访问；安全 Cookie 要求使用 HTTPS 登录管理中心。
 
@@ -260,7 +291,7 @@ groups:
 
 ## 本地开发
 
-需要 **Go 1.26+、Node.js 22 LTS 和 npm**。不需要 Python 来运行当前应用。
+需要 **Go 1.27.4+、Node.js 22 LTS 和 npm**。不需要 Python 来运行当前应用。
 
 ```bash
 cp .env.example .env
@@ -298,6 +329,9 @@ Vite 在终端显示本地地址，并把 `/api` 代理到 `127.0.0.1:8000`。�
 
 | 变量 | 用途 / 默认值 |
 | --- | --- |
+| `SITE_NAME` / `SITE_DESCRIPTION` | 运行时站点名称与简介 |
+| `PUBLIC_BASE_URL` | 本站规范 origin，用于消息链接与分享二维码；为空时使用当前 origin |
+| `MEDIA_CACHE_MAX_BYTES` / `MEDIA_CACHE_MAX_AGE_DAYS` | 总缓存软上限 / 保留天数，默认 5 GiB / 30 天 |
 | `APP_ENV` | `production` / `staging` / `development` / `test`；无法识别的值拒绝启动 |
 | `ADMIN_API_KEY` | 管理密钥，至少 16 字符 |
 | `SESSION_SECRET` | 会话 HMAC 密钥，至少 32 字节 |
@@ -347,28 +381,21 @@ npm run test:e2e
 
 浏览器测试覆盖 1440px、768px 和 390px 三种宽度，使用 API 测试数据验证检索、图片查看、动效、主题、权限入口、长文与多图分享；不会写入生产数据库。
 
-生产构建同时检查原始 JavaScript 体积：阅读代码 **260 KiB**、按需 Assembly **36 KiB**、按需分享导出 **16 KiB**。插画为本地静态资源，接近视口时再加载。
+生产构建同时检查原始 JavaScript 体积：阅读代码 **280 KiB**、按需 Assembly **36 KiB**、按需分享导出 **16 KiB**。插画为本地静态资源，接近视口时再加载。
 
 ## 备份与升级
 
-SQLite 开启 WAL 时，使用在线备份接口，避免只复制正在写入的主数据库文件。若宿主机安装了 `sqlite3`：
+SQLite 使用在线备份接口，包含 WAL 中已提交的数据，不直接复制运行中的主库：
 
 ```bash
-mkdir -p backups
-sqlite3 data/telegram_forwarder.db ".backup 'backups/telegram-forwarder-before-upgrade.db'"
+python3 scripts/release.py backup data/telegram_forwarder.db backups/before-upgrade.db
 ```
 
-使用独立时间戳目录保存数据库快照、媒体、生产配置和当前镜像引用。前端发布还应保存原静态资源，避免旧页面的动态导入失效。
+正式发布工具只打包程序、前端构建和摘要清单，排除配置、数据与备份。它在服务器先备份，再用独立临时数据库检查候选镜像；切换后核验页面、静态文件、公开权限与匿名管理 401，失败自动恢复原镜像和环境。回滚保留当前数据库。
 
-```bash
-# 备份完成后，在同一检出目录更新代码
-git pull --ff-only
-docker compose build telegram-forwarder
-docker compose up -d --no-build telegram-forwarder
-curl -fsS http://127.0.0.1:8000/health
-```
+构建、架构选择、发布与回滚命令见[完整运维说明](docs/operations.md)。部署者可以配置 `SITE_NAME`、`SITE_DESCRIPTION` 和 `PUBLIC_BASE_URL`，不需要修改前端源码；默认 Compose 独立运行，服务器网络覆盖可选。
 
-升级后检查公开页面、媒体、分享导出和匿名管理 API 的 401。**前端回滚使用旧镜像，保留当前数据库**，避免覆盖发布后正常采集的数据。线上实际发布过程与回滚信息见[发布记录](docs/releases/2026-11-17-signal-loom-brand-release.md)。
+GitHub Actions 执行后端竞态测试、前端与三尺寸浏览器回归、构建预算、发布工具测试、敏感内容与依赖漏洞检查、Docker 构建。Dependabot 提供 Go、npm 和 Actions 的定期更新 PR。
 
 ## 目录导航
 
@@ -401,6 +428,9 @@ app/ · tests/           历史 Python 实现与测试
 
 | 主题 | 文档 |
 | --- | --- |
+| 现行 Go 架构 | [运行架构与权限](docs/architecture/current-go-runtime.md) |
+| 统一制品发布、备份与回滚 | [运维说明](docs/operations.md) |
+| 贡献与版本记录 | [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) |
 | 完整环境配置 | [`.env.example`](.env.example) |
 | 纸张阅读室与动效集成 | [界面设计决定](docs/architecture/notes/implemented/feature/2026-11-17-editorial-assembly-reading-room.md) |
 | 长文、多图与分页导出 | [媒体与分享修复](docs/architecture/notes/implemented/bug-fix/2026-11-17-complete-media-and-paged-share-cards.md) |

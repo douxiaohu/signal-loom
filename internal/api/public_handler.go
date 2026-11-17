@@ -45,6 +45,8 @@ func (h *PublicHandler) RegisterRoutes(r chi.Router) {
 	r.Get("/health", h.Health)
 
 	r.Route("/api/public", func(r chi.Router) {
+		r.Get("/config", h.SiteConfig)
+		r.Get("/messages/{id}", h.GetMessage)
 		r.Get("/sources", h.ListSources)
 		r.Get("/messages", h.ListMessages)
 		r.Get("/media/{id}/{index}", h.ServeMedia)
@@ -176,4 +178,41 @@ func (h *PublicHandler) SubmitFeedback(w http.ResponseWriter, r *http.Request) {
 		"status":     fb.Status,
 		"created_at": fb.CreatedAt,
 	})
+}
+
+// SiteConfig is an explicit whitelist; never serialize the runtime Config.
+func (h *PublicHandler) SiteConfig(w http.ResponseWriter, r *http.Request) {
+	name := h.cfg.SiteName
+	if name == "" {
+		name = "拾讯"
+	}
+	RespondJSON(w, http.StatusOK, map[string]string{"name": name, "description": h.cfg.SiteDescription, "base_url": h.cfg.PublicBaseURL})
+}
+
+func (h *PublicHandler) GetMessage(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || id <= 0 {
+		RespondError(w, 404, "Message not found")
+		return
+	}
+	msg, err := h.messages.GetMessageByID(id)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	if msg == nil || (strings.TrimSpace(msg.Content) == "" && msg.MediaType == nil) || (msg.MediaType != nil && *msg.MediaType == "poll") {
+		RespondError(w, 404, "Message not found")
+		return
+	}
+	visible, err := h.sources.IsPubliclyVisible(msg.ChatID)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	if !visible {
+		RespondError(w, 404, "Message not found")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	RespondJSON(w, 200, FormatAPIMessage(msg, "/api/public/media"))
 }

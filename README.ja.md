@@ -8,7 +8,7 @@
 
 公開 Telegram チャンネルをまとめて読む、セルフホスト型の小さな閲覧室。
 
-![Go 1.26+](https://img.shields.io/badge/Go-1.26%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
+![Go 1.27.4+](https://img.shields.io/badge/Go-1.27.4%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![SQLite](https://img.shields.io/badge/SQLite-single_instance-526B44?style=flat-square&logo=sqlite&logoColor=white)
 [![MIT](https://img.shields.io/badge/License-MIT-526B44?style=flat-square)](LICENSE)
@@ -63,7 +63,7 @@ Signal Loom は公開 Telegram チャンネルの投稿を時系列で集め、�
 - 現在のページをコピー、1 ページを PNG 保存、全ページを ZIP 保存できます。
 - 各ページに配信元、ページ番号、サイトの URL を表示します。
 - 読み込めない画像には番号付きの案内を残します。
-- 現在の URL は `https://douxiaohu.duckdns.org` です。自分の環境では [`shareCard.ts`](frontend/src/lib/shareCard.ts) の `WEBSITE_URL` を変更してください。
+- `PUBLIC_BASE_URL` でサイトの origin を設定します。共有ページには `/message/:id` と同じ URL の QR コードを表示します。未設定時は現在の origin を使い、ソース変更は不要です。
 
 <details>
 <summary>最終ページの画像とサイトリンク</summary>
@@ -129,7 +129,35 @@ IP ベースの当日・直近・累計の統計に加え、時刻、パス、�
 
 </details>
 
-> 14 枚の画面は、現在のフロントエンドをローカルブラウザーで撮影したものです。独立したデモ用の投稿・イラスト・統計と、文書用に予約された IP アドレスを使っています。本番管理データやキーは含みません。アプリの UI は現在、主に中国語です。この日本語版はプロジェクト文書を翻訳したものです。
+> 18 枚の画面は、現在のフロントエンドをローカルブラウザーで撮影したものです。独立したデモ用の投稿・イラスト・統計と、文書用に予約された IP アドレスを使っています。本番管理データやキーは含みません。公開 UI は簡体中文・English・日本語・Español に対応します。投稿本文は元の言語、管理画面は現在中国語です。
+
+### 07 · 保存して、続きから読む
+
+しおりは端末内にメッセージ ID だけを保存します。保存一覧では公開権限を再確認し、非公開・停止済み投稿は読めなくなります。読書の再開では検索条件と投稿位置を復元します。
+
+![保存一覧](docs/images/saved-stories.png)
+
+<details><summary>投稿ごとのリンクと QR コード</summary>
+
+投稿には `/message/:id` のアドレスがあり、共有カードの QR コードでも開けます。
+
+![投稿の個別ページ](docs/images/message-detail.png)
+
+</details>
+
+### 08 · 四言語とキャッシュ管理
+
+公開 UI は中国語・英語・日本語・スペイン語に対応し、日付や共有文言も切り替わります。投稿本文は翻訳しません。翻訳辞書と QR 生成は必要時に読み込みます。
+
+![英語の閲覧画面](docs/images/english-reading.png)
+
+<details><summary>管理画面のキャッシュ容量</summary>
+
+既定は 5 GiB・30 日、起動時と 15 分ごとに確認します。管理画面で容量とファイル数を確認し、すぐにメンテナンスできます。メッセージ DB は削除しません。
+
+![キャッシュ管理](docs/images/admin-cache.png)
+
+</details>
 
 ## 動作構成
 
@@ -178,13 +206,12 @@ APP_GID=1000
 Linux では `APP_UID` と `APP_GID` を配置先ユーザーの ID に合わせ、永続化ディレクトリへの書き込みを許可します。コンテナー内の `HOST` は空のまま、ポートは既定の 8000 を使います。
 
 ```bash
-docker network inspect ai-internal >/dev/null 2>&1 || docker network create ai-internal
 docker compose up -d --build
 docker compose ps
 curl -fsS http://127.0.0.1:8000/health
 ```
 
-Compose は外部ネットワーク `ai-internal` を使い、**127.0.0.1:8000** にのみ公開します。同一ホストの HTTPS リバースプロキシを通してください。管理ログインのセキュア Cookie には HTTPS が必要です。
+既定の Compose は外部ネットワークに依存せず、**127.0.0.1:8000** にのみ公開します。同一ホストの HTTPS リバースプロキシを通してください。管理ログインのセキュア Cookie には HTTPS が必要です。
 
 ```caddy
 signal.example.com {
@@ -209,7 +236,7 @@ groups:
 
 ## ローカル開発
 
-**Go 1.26+、Node.js 22 LTS、npm** を使います。現在のアプリ実行に Python は不要です。上記の設定ファイルを用意してから実行します。
+**Go 1.27.4+、Node.js 22 LTS、npm** を使います。現在のアプリ実行に Python は不要です。上記の設定ファイルを用意してから実行します。
 
 ```bash
 cd frontend
@@ -234,6 +261,9 @@ Vite はローカル URL を表示し、`/api` を `127.0.0.1:8000` に転送し
 
 | 変数 | 用途・既定値 |
 | --- | --- |
+| `SITE_NAME` / `SITE_DESCRIPTION` | 実行時のサイト名・説明 |
+| `PUBLIC_BASE_URL` | 投稿リンクと QR の origin。空なら現在の origin |
+| `MEDIA_CACHE_MAX_BYTES` / `MEDIA_CACHE_MAX_AGE_DAYS` | 総容量 / 保留期間。5 GiB / 30 日 |
 | `APP_ENV` | `production` / `staging` / `development` / `test`。未知の値は起動失敗 |
 | `ADMIN_API_KEY` / `SESSION_SECRET` | 管理キー 16 文字以上 / セッション HMAC キー 32 バイト以上 |
 | `SESSION_COOKIE_SECURE` / `SESSION_TTL_HOURS` | HTTPS Cookie / 有効時間。`true` / `12` |
@@ -268,33 +298,28 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-ブラウザーテストは 1440・768・390 px の幅で、検索、画像、テーマ、動き、権限、長文と複数画像の共有を API フィクスチャーで確認します。本番 DB には書き込みません。ビルド時の JavaScript 上限は閲覧 260 KiB、遅延読込 Assembly 36 KiB、共有 16 KiB です。
+ブラウザーテストは 1440・768・390 px の幅で、検索、画像、テーマ、動き、権限、長文と複数画像の共有を API フィクスチャーで確認します。本番 DB には書き込みません。ビルド時の JavaScript 上限は閲覧 280 KiB、遅延読込 Assembly 36 KiB、共有 16 KiB です。
 
 ## バックアップと更新
 
-WAL を使う SQLite はオンラインバックアップで保存します。稼働中のメイン DB だけをコピーすると変更を取りこぼす可能性があります。
+WAL を含むオンラインバックアップを実行します。
 
 ```bash
-mkdir -p backups
-sqlite3 data/telegram_forwarder.db ".backup 'backups/telegram-forwarder-before-upgrade.db'"
+python3 scripts/release.py backup data/telegram_forwarder.db backups/before-upgrade.db
 ```
 
-メディア、本番設定、現行イメージ参照も保管します。開いたままのページ用に旧フロントエンド資産を保持してください。
+正式リリースツールはプログラム・フロントエンド・チェックサムだけを梱包します。バックアップ後に独立した候補を確認し、切り替え後はファイル、権限、管理 API の 401 を検証します。失敗時はイメージと環境を戻し、現在の DB は保持します。
 
-```bash
-git pull --ff-only
-docker compose build telegram-forwarder
-docker compose up -d --no-build telegram-forwarder
-curl -fsS http://127.0.0.1:8000/health
-```
-
-更新後は公開ページ、メディア、共有出力、未認証管理 API の 401 を確認します。フロントエンドのロールバックでは、更新後に収集した情報を残すため現在の DB を保持します。
+手順は[運用ガイド](docs/operations.md)を参照してください。共有ネットワークは `docker-compose.server.yml` で任意に設定できます。GitHub Actions でテスト、ブラウザー、ビルド容量、リリースツール、機密情報・依存関係、Docker 構築を検査し、Dependabot が更新 PR を作成します。
 
 ## 関連文書
 
 | 内容 | リンク |
 | --- | --- |
 | 他の言語 | [简体中文](README.md) · [English](README.en.md) · [Español](README.es.md) |
+| 現行アーキテクチャ | [Go 実行構成・中国語](docs/architecture/current-go-runtime.md) |
+| リリースとバックアップ | [運用ガイド・中国語](docs/operations.md) |
+| 貢献と更新履歴 | [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) |
 | 完全な環境設定 | [`.env.example`](.env.example) |
 | 閲覧室と動きの設計 | [設計記録・中国語](docs/architecture/notes/implemented/feature/2026-11-17-editorial-assembly-reading-room.md) |
 | 画像と共有カード | [実装記録・中国語](docs/architecture/notes/implemented/bug-fix/2026-11-17-complete-media-and-paged-share-cards.md) |

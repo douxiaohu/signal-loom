@@ -1,5 +1,7 @@
 # 模块化单体重构：来源可插拔、领域解耦、单机可部署
 
+> 历史设计：本文保留 Python/FastAPI 与 GitHub 趋势阶段的决策背景。当前实现请阅读[现行 Go 运行架构](current-go-runtime.md)。
+
 | 字段 | 值 |
 | --- | --- |
 | 作者 | douxiaohu |

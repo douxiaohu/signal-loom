@@ -1,7 +1,7 @@
 # 声明在第一个 FROM 之前的 ARG 才能用在后面各阶段的 FROM 里。
-# go.mod 要求 Go 1.26+（依赖项的最低版本），所以构建镜像必须与之匹配；
+# go.mod 要求 Go 1.27.4+（依赖项的最低版本），所以构建镜像必须与之匹配；
 # 镜像标签拉取失败时可用 --build-arg GO_VERSION=<可用的更新版本> 覆盖。
-ARG GO_VERSION=1.26
+ARG GO_VERSION=1.27.4
 
 # Stage 1: 构建 React 19 前端
 FROM node:22-alpine AS frontend-builder

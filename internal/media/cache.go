@@ -119,11 +119,12 @@ type Options struct {
 
 // Cache is safe for concurrent use.
 type Cache struct {
-	baseDir  string
-	hosts    []string
-	maxBytes int64
-	client   *http.Client
-	allowURL func(*url.URL) bool
+	maintenance sync.RWMutex
+	baseDir     string
+	hosts       []string
+	maxBytes    int64
+	client      *http.Client
+	allowURL    func(*url.URL) bool
 
 	flight   flightGroup
 	fetchSem chan struct{}
@@ -248,6 +249,12 @@ func (c *Cache) basePath(ref Ref) string {
 // thumbnail set, images are returned as a small JPEG; anything that cannot be
 // thumbnailed (videos, undecodable or huge images) falls back to the original.
 func (c *Cache) Get(ctx context.Context, ref Ref, thumbnail bool) (Result, error) {
+	c.maintenance.RLock()
+	defer c.maintenance.RUnlock()
+	return c.get(ctx, ref, thumbnail)
+}
+
+func (c *Cache) get(ctx context.Context, ref Ref, thumbnail bool) (Result, error) {
 	if ref.URL == "" {
 		return Result{}, ErrNotFound
 	}
@@ -285,6 +292,7 @@ func (c *Cache) findOriginal(base string) (Result, bool) {
 
 func (c *Cache) fetchOriginal(u *url.URL, base string) (Result, error) {
 	if res, ok := c.findOriginal(base); ok {
+		touch(res.Path)
 		return res, nil
 	}
 	c.fetchSem <- struct{}{}

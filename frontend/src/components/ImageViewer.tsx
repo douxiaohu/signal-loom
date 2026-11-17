@@ -1,3 +1,4 @@
+import { useI18n, translate } from "../i18n";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, ExternalLink, Download } from "lucide-react";
@@ -11,7 +12,13 @@ type ImageViewerProps = {
   onClose: () => void;
 };
 
-export default function ImageViewer({ src, alt, returnFocusRef, onClose }: ImageViewerProps) {
+export default function ImageViewer({
+  src,
+  alt,
+  returnFocusRef,
+  onClose,
+}: ImageViewerProps) {
+  const { t } = useI18n();
   const closeRef = useRef<HTMLButtonElement>(null);
   // Read through a ref so that a parent re-render (new onClose identity) does not
   // re-run the effect below, which would steal focus and flicker the page lock.
@@ -45,7 +52,7 @@ export default function ImageViewer({ src, alt, returnFocusRef, onClose }: Image
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md transition-opacity duration-200"
       role="dialog"
       aria-modal="true"
-      aria-label="图片预览"
+      aria-label={t("图片预览")}
       onClick={onClose}
     >
       <div
@@ -58,28 +65,28 @@ export default function ImageViewer({ src, alt, returnFocusRef, onClose }: Image
             href={src}
             target="_blank"
             rel="noopener noreferrer"
-            title="在新标签页中打开原图"
+            title={t("在新标签页中打开原图")}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 rounded-full backdrop-blur transition-all duration-150"
           >
             <ExternalLink size={13} />
-            <span>原图</span>
+            <span>{t("原图")}</span>
           </a>
 
           <a
             href={src}
             download
-            title="下载原图"
+            title={t("下载原图")}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 rounded-full backdrop-blur transition-all duration-150"
           >
             <Download size={13} />
-            <span>下载</span>
+            <span>{t("下载")}</span>
           </a>
 
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="关闭图片预览"
+            aria-label={t("关闭图片预览")}
             className="p-1.5 text-zinc-300 hover:text-white bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 rounded-full backdrop-blur transition-all duration-150 cursor-pointer"
           >
             <X size={18} />
@@ -98,6 +105,6 @@ export default function ImageViewer({ src, alt, returnFocusRef, onClose }: Image
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

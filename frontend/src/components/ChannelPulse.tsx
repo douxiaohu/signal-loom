@@ -1,3 +1,4 @@
+import { useI18n, translate } from "../i18n";
 import { useMemo } from "react";
 
 import type { Message, PublicSource } from "../types";
@@ -33,10 +34,13 @@ function hourlyCounts(messages: Message[]): number[] {
   return buckets;
 }
 
-function newestTime(sources: PublicSource[], messages: Message[]): string | null {
+function newestTime(
+  sources: PublicSource[],
+  messages: Message[],
+): string | null {
   const times = [
     ...sources.map((source) => source.last_message_time),
-    ...messages.map((message) => message.message_time)
+    ...messages.map((message) => message.message_time),
   ]
     .filter((value): value is string => Boolean(value))
     .map((value) => new Date(value).getTime())
@@ -50,11 +54,24 @@ function newestTime(sources: PublicSource[], messages: Message[]): string | null
  * public API already returns — source counts, aggregate volume, last activity — and the
  * activity strip buckets the messages actually loaded, so nothing here is fabricated.
  */
-export default function ChannelPulse({ sources, messages, loading }: ChannelPulseProps) {
+export default function ChannelPulse({
+  sources,
+  messages,
+  loading,
+}: ChannelPulseProps) {
+  const { t, locale } = useI18n();
   const sourceCount = sources.length;
-  const healthyCount = sources.filter((source) => source.health_status === "healthy").length;
-  const totalMessages = sources.reduce((sum, source) => sum + (source.message_count || 0), 0);
-  const lastUpdate = useMemo(() => newestTime(sources, messages), [sources, messages]);
+  const healthyCount = sources.filter(
+    (source) => source.health_status === "healthy",
+  ).length;
+  const totalMessages = sources.reduce(
+    (sum, source) => sum + (source.message_count || 0),
+    0,
+  );
+  const lastUpdate = useMemo(
+    () => newestTime(sources, messages),
+    [sources, messages, locale],
+  );
 
   const spark = useMemo(() => {
     const counts = hourlyCounts(messages);
@@ -71,40 +88,46 @@ export default function ChannelPulse({ sources, messages, loading }: ChannelPuls
         y: height - barHeight,
         width: barWidth,
         height: barHeight,
-        last: index === counts.length - 1
+        last: index === counts.length - 1,
       };
     });
     return { bars, hours: counts.length, width, height };
   }, [messages]);
 
-  const sub = sourceCount > 0
-    ? `正在聚合 ${sourceCount} 个公开频道 · 实时刷新`
-    : loading
-      ? "正在接入公开频道…"
-      : "暂无公开频道";
+  const sub =
+    sourceCount > 0
+      ? t("正在聚合 {n} 个公开频道 · 实时刷新", { n: sourceCount })
+      : loading
+        ? t("正在接入公开频道…")
+        : t("暂无公开频道");
 
   return (
-    <section className="pub-pulse" aria-label="聚合概览">
+    <section className="pub-pulse" aria-label={t("聚合概览")}>
       <div className="pub-pulse-lead">
-        <span className="pub-pulse-eyebrow"><i aria-hidden="true" />实时聚合</span>
-        <h2 className="pub-pulse-title">频道脉搏</h2>
+        <span className="pub-pulse-eyebrow">
+          <i aria-hidden="true" />
+          {t("实时聚合")}
+        </span>
+        <h2 className="pub-pulse-title">{t("频道脉搏")}</h2>
         <p className="pub-pulse-sub">{sub}</p>
       </div>
 
       <dl className="pub-pulse-stats">
         <div className="pub-pulse-stat">
-          <dt>公开来源</dt>
+          <dt>{t("公开来源")}</dt>
           <dd>
             {sourceCount > 0 ? sourceCount : "—"}
-            {healthyCount > 0 ? <em>{healthyCount} 正常</em> : null}
+            {healthyCount > 0 ? (
+              <em>{t("{n} 正常", { n: healthyCount })}</em>
+            ) : null}
           </dd>
         </div>
         <div className="pub-pulse-stat">
-          <dt>聚合总量</dt>
+          <dt>{t("聚合总量")}</dt>
           <dd>{totalMessages > 0 ? formatCount(totalMessages) : "—"}</dd>
         </div>
         <div className="pub-pulse-stat">
-          <dt>最近更新</dt>
+          <dt>{t("最近更新")}</dt>
           <dd>{formatRelativeTime(lastUpdate)}</dd>
         </div>
       </dl>
@@ -112,10 +135,16 @@ export default function ChannelPulse({ sources, messages, loading }: ChannelPuls
       {spark ? (
         <div className="pub-pulse-spark">
           <div className="pub-pulse-spark-head">
-            <span>消息节奏</span>
-            <span>最近 {spark.hours} 小时</span>
+            <span>{t("消息节奏")}</span>
+            <span>{t("最近 {n} 小时", { n: spark.hours })}</span>
           </div>
-          <svg viewBox={`0 0 ${spark.width} ${spark.height}`} role="img" aria-label={`最近 ${spark.hours} 小时的消息节奏`}>
+          <svg
+            viewBox={`0 0 ${spark.width} ${spark.height}`}
+            role="img"
+            aria-label={
+              t("消息节奏") + " · " + t("最近 {n} 小时", { n: spark.hours })
+            }
+          >
             {spark.bars.map((bar, index) => (
               <rect
                 key={index}

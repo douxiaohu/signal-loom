@@ -18,6 +18,12 @@
 - 许可：SIL Open Font License 1.1（OFL-1.1）。字体本身不改为 MIT。
 - 原始许可随前端静态资源发布：[geist-OFL-1.1.txt](frontend/public/licenses/geist-OFL-1.1.txt)，部署后可通过 `/licenses/geist-OFL-1.1.txt` 获取。
 
+## 分享二维码
+
+- `qrcode`（[soldair/node-qrcode](https://github.com/soldair/node-qrcode)），MIT，用于在本机生成分享二维码。
+- 浏览器实现依赖 `dijkstrajs`，保留其 MIT 许可。
+- 原始许可随前端分发：[qrcode-MIT.txt](frontend/public/licenses/qrcode-MIT.txt)与[dijkstrajs-MIT.txt](frontend/public/licenses/dijkstrajs-MIT.txt)。不调用外部二维码服务，不上传消息内容。
+
 ## 包管理器依赖
 
 依赖版本由 [`go.mod`](go.mod)、[`go.sum`](go.sum)、[`frontend/package.json`](frontend/package.json)和 [`frontend/package-lock.json`](frontend/package-lock.json)记录。每个依赖保留其包内的版权与许可声明。

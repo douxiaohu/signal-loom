@@ -5,8 +5,8 @@ services:
     build:
       context: .
       args:
-        APP_UID: ${APP_UID}
-        APP_GID: ${APP_GID}
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
     container_name: telegram-forwarder
     restart: unless-stopped
     env_file:
@@ -16,10 +16,3 @@ services:
       - ./config/groups.yaml:/app/config/groups.yaml:ro
     ports:
       - "127.0.0.1:8000:8000"
-    networks:
-      - default
-      - ai-internal
-
-networks:
-  ai-internal:
-    external: true
