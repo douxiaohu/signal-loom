@@ -255,7 +255,7 @@ The Go runtime currently supports **`telegram_public` only**. Bot collection, lo
 
 ## Local development
 
-Use **Go 1.27.4+, Node.js 22 LTS and npm**. Python is not needed for the current runtime.
+Use **Go 1.27.4+, Node.js 22.22.2+ and npm**. Python is not needed for the current runtime.
 
 ```bash
 cp .env.example .env

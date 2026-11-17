@@ -291,7 +291,7 @@ groups:
 
 ## 本地开发
 
-需要 **Go 1.27.4+、Node.js 22 LTS 和 npm**。不需要 Python 来运行当前应用。
+需要 **Go 1.27.4+、Node.js 22.22.2+ 和 npm**。不需要 Python 来运行当前应用。
 
 ```bash
 cp .env.example .env

@@ -11,8 +11,9 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] },
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "strict": true,
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },

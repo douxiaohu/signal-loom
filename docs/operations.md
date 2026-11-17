@@ -35,7 +35,7 @@ python3 scripts/release.py backup \
 
 ## 构建可验证制品
 
-需要 Go 1.27.4+、Node.js 22、Python 3.8+ 与经校验的 Gitleaks 8.30.1。先提交代码，保证发布版本对应明确的提交。
+需要 Go 1.27.4+、Node.js 22.22.2+、Python 3.8+ 与经校验的 Gitleaks 8.30.1。先提交代码，保证发布版本对应明确的提交。
 
 ```bash
 go test -race ./...

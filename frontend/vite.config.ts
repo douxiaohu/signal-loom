@@ -23,7 +23,7 @@ function mpaEntryRoutes(): Plugin {
 export default defineConfig({
   plugins: [tailwindcss(), react(), mpaEntryRoutes()],
   resolve: {
-    alias: { "@": resolve(__dirname, "src") },
+    alias: { "@": resolve(import.meta.dirname, "src") },
   },
   test: {
     environment: "jsdom",
@@ -36,15 +36,17 @@ export default defineConfig({
     chunkSizeWarningLimit: 250,
     outDir: "dist",
     sourcemap: false,
-    rollupOptions: {
+    rolldownOptions: {
       input: {
-        public: resolve(__dirname, "index.html"),
-        admin: resolve(__dirname, "admin/index.html"),
+        public: resolve(import.meta.dirname, "index.html"),
+        admin: resolve(import.meta.dirname, "admin/index.html"),
       },
       output: {
-        manualChunks: {
-          react: ["react", "react-dom"],
-          "qr-code": ["qrcode/lib/browser"],
+        codeSplitting: {
+          groups: [
+            { name: "react", test: /node_modules\/(react|react-dom)\// },
+            { name: "qr-code", test: /node_modules\/qrcode\// },
+          ],
         },
       },
     },

@@ -4,13 +4,24 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      compatible-updates:
+        patterns: ['*']
+        update-types: [minor, patch]
     open-pull-requests-limit: 5
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: weekly
+    groups:
+      compatible-updates:
+        patterns: ['*']
+        update-types: [minor, patch]
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    groups:
+      actions-updates:
+        patterns: ['*']

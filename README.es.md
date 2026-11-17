@@ -236,7 +236,7 @@ El entorno Go admite actualmente **solo `telegram_public`**. La recopilación me
 
 ## Desarrollo local
 
-Usa **Go 1.27.4+, Node.js 22 LTS y npm**. Python no es necesario para ejecutar la versión actual. Prepara antes los archivos de configuración indicados arriba.
+Usa **Go 1.27.4+, Node.js 22.22.2+ y npm**. Python no es necesario para ejecutar la versión actual. Prepara antes los archivos de configuración indicados arriba.
 
 ```bash
 cd frontend

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-17 · Dependency branch consolidation
+
+- Integrated all ten pending dependency updates, preserving their original commits.
+- Migrated to TypeScript 7, Vite 8 and React plugin 6; updated jsdom, Lucide and user-event.
+- Updated SQLite and GitHub Actions; aligned Node requirements with jsdom 31.
+- Grouped compatible future dependency updates and retained separate review for major npm/Go upgrades.
+
 ## 2026-11-17 · Reading and operations
 
 - Runtime site name, description and canonical origin through a public configuration whitelist.
