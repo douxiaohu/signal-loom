@@ -11,6 +11,8 @@ const optionalBudgets = {
   "qr-code-": 32 * 1024,
   "translations-": 32 * 1024,
   "ReaderPages-": 12 * 1024,
+  "ShareCardModal-": 8 * 1024,
+  "ImageViewer-": 4 * 1024,
 };
 const assemblyBudgetBytes = 36 * 1024;
 const shareBudgetBytes = 16 * 1024;

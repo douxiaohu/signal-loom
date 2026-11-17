@@ -4,7 +4,7 @@ Status: implemented
 
 ## Problem
 
-仓库有 10 个待合并 Dependabot PR 和一个已合并的远端功能分支，另有三个已合并的本地分享分支。用户要求全部合入 main 并清理无用分支。单个更新分支基于不同时间的主干，部分 CI 仍使用已修复的旧扫描器；React 插件 6 与 Vite 6 不匹配，TypeScript 7 移除了 baseUrl，并加强了 CSS 副作用导入检查。
+仓库最初有 10 个待合并 Dependabot PR，首轮合并后机器人又创建 3 个后续更新，同样纳入整合。仓库还有一个已合并的远端功能分支，另有三个已合并的本地分享分支。用户要求全部合入 main 并清理无用分支。单个更新分支基于不同时间的主干，部分 CI 仍使用已修复的旧扫描器；React 插件 6 与 Vite 6 不匹配，TypeScript 7 移除了 baseUrl，并加强了 CSS 副作用导入检查。
 
 历史审计：[自部署与维护决定](../architecture/2026-11-17-signal-loom-maintainability.md)部分重叠，继续保留其权限、备份、公开配置和构建预算。本记录仅接管工具版本与分支整合流程，不改变阅读和管理 API。
 
@@ -12,7 +12,7 @@ Status: implemented
 
 在临时整合分支依次合入原始 PR 提交，保留每个分支的祖先关系，再统一解决冲突和重建锁文件。main 接收经过本机和 GitHub 验证的完整结果；只删除提交已成为 main 祖先且没有独有内容的旧分支，不通过强制删除隐藏未合并工作。
 
-前端采用 TypeScript 7、React 插件 6、Vite 8 与 jsdom 31。Vite 的配置使用 import.meta.dirname、rolldownOptions 和 codeSplitting.groups，维持 React 与按需二维码的独立模块。路径别名改成相对于 tsconfig 的 ./src/*，通过 vite/client 提供 CSS 导入类型。Node 支持范围与 jsdom 的要求一致：22.22.2+、24.15.0+ 或 26+ 的受支持版本范围。
+前端采用 TypeScript 7、React 插件 6、Vite 8 与 jsdom 31。Vite 的配置使用 import.meta.dirname、rolldownOptions 和 codeSplitting.groups，维持 React 与按需二维码的独立模块。React 19.3 的运行时代码增长通过按需加载分享弹窗与图片查看器消化，保留原 280 KiB 阅读预算；弹窗与查看器分别设置 8 / 4 KiB 预算。加载中与失败状态都能通过关闭按钮或 Esc 退出，并恢复触发位置的焦点。后续 React、类型与测试库更新也纳入同一组回归。路径别名改成相对于 tsconfig 的 ./src/*，通过 vite/client 提供 CSS 导入类型。Node 支持范围与 jsdom 的要求一致：22.22.2+、24.15.0+ 或 26+ 的受支持版本范围。
 
 浏览器 CI 在 build 完成后使用 preview 检查真正的生产分块，而不只检查开发服务；本地默认命令仍支持开发服务回归。GitHub Actions 统一使用新版组件，并补齐 setup-python。SQLite 使用 1.62.0，保留现有 schema 与迁移逻辑。后续非破坏性 npm/Go 更新分组，Actions 更新合并为一组；npm/Go 跨大版本更新仍单独审查，避免同时积累大量独立小更新分支。
 

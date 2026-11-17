@@ -1,4 +1,11 @@
 export const dictionary: Record<string, string[]> = {
+  关闭: ["Close", "閉じる", "Cerrar"],
+  "正在加载…": ["Loading…", "読み込み中…", "Cargando…"],
+  "暂时无法打开，请刷新页面后重试。": [
+    "Unable to open. Reload and try again.",
+    "開けません。ページを再読み込みしてください。",
+    "No se puede abrir. Recarga la página e inténtalo de nuevo.",
+  ],
   "拾起消息，织成日常。": [
     "Gather the signals. Weave them into your day.",
     "散らばる情報を拾い、日々の読書につなげる。",

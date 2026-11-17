@@ -1,10 +1,11 @@
 import { useI18n, translate } from "../i18n";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { lazy, useCallback, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Inbox } from "lucide-react";
 
 import type { Message } from "../types";
 import ErrorBoundary from "./ErrorBoundary";
-import ImageViewer from "./ImageViewer";
+import AsyncModal from "./AsyncModal";
+const ImageViewer = lazy(() => import("./ImageViewer"));
 import MessageCard from "./feed/MessageCard";
 import MessageSkeleton from "./feed/MessageSkeleton";
 import { groupMessages } from "./feed/groupMessages";
@@ -152,12 +153,18 @@ export default function MessageFeed({
       </main>
 
       {openImage ? (
-        <ImageViewer
-          src={openImage.src}
-          alt={openImage.alt}
-          returnFocusRef={lastTriggerRef}
+        <AsyncModal
+          label={t("图片预览")}
           onClose={closeViewer}
-        />
+          returnFocusRef={lastTriggerRef}
+        >
+          <ImageViewer
+            src={openImage.src}
+            alt={openImage.alt}
+            returnFocusRef={lastTriggerRef}
+            onClose={closeViewer}
+          />
+        </AsyncModal>
       ) : null}
     </>
   );

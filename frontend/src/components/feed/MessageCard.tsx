@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { lazy, memo, useEffect, useRef, useState } from "react";
 import {
   Bookmark,
   BookmarkCheck,
@@ -23,7 +23,8 @@ import {
 } from "../../utils";
 import RichContent from "../RichContent";
 import MediaGallery, { mediaItemsOf } from "./MediaGallery";
-import ShareCardModal from "./ShareCardModal";
+import AsyncModal from "../AsyncModal";
+const ShareCardModal = lazy(() => import("./ShareCardModal"));
 import type { FeedDensity, OpenImageHandler } from "./types";
 
 type MessageCardProps = {
@@ -258,11 +259,17 @@ function MessageCard({
         ) : null}
       </article>
       {sharing ? (
-        <ShareCardModal
-          message={message}
-          returnFocusRef={shareRef}
+        <AsyncModal
+          label={t("分享卡片")}
           onClose={() => setSharing(false)}
-        />
+          returnFocusRef={shareRef}
+        >
+          <ShareCardModal
+            message={message}
+            returnFocusRef={shareRef}
+            onClose={() => setSharing(false)}
+          />
+        </AsyncModal>
       ) : null}
     </>
   );
