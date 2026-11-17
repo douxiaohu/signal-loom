@@ -150,8 +150,8 @@ IP ベースの当日・直近・累計の統計に加え、時刻、パス、�
 Docker Engine と Compose、および Telegram 公開ページへ接続できるネットワークが必要です。ビルド時は npm、Go モジュール、ベースイメージにも接続します。
 
 ```bash
-git clone https://github.com/douxiaohu/telegram-github-radar.git
-cd telegram-github-radar
+git clone https://github.com/douxiaohu/signal-loom.git
+cd signal-loom
 cp .env.example .env
 cp config/groups.example.yaml config/groups.yaml
 mkdir -p data/media-cache

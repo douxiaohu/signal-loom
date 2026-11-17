@@ -22,7 +22,8 @@ docker_cmd() {
   return 1
 }
 
-for name in telegram-forwarder telegram-github-radar radar; do
+# Keep legacy deployment names discoverable after the repository rename.
+for name in signal-loom telegram-forwarder telegram-github-radar radar; do
   dir="$(docker_cmd inspect "$name" --format "{{index .Config.Labels \"com.docker.compose.project.working_dir\"}}" 2>/dev/null)"
   if [[ -n "$dir" && "$dir" != "<no value>" ]]; then
     printf "%s\n" "$dir"
@@ -36,7 +37,7 @@ for name in telegram-forwarder telegram-github-radar radar; do
 done
 
 while IFS= read -r file; do
-  if grep -Eq "telegram-forwarder|telegram-github-radar" "$file" 2>/dev/null; then
+  if grep -Eq "signal-loom|telegram-forwarder|telegram-github-radar" "$file" 2>/dev/null; then
     dirname "$file"
     exit 0
   fi

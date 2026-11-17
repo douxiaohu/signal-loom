@@ -178,14 +178,14 @@ flowchart LR
 ### 1. 获取代码与配置
 
 ```bash
-git clone https://github.com/douxiaohu/telegram-github-radar.git
-cd telegram-github-radar
+git clone https://github.com/douxiaohu/signal-loom.git
+cd signal-loom
 cp .env.example .env
 cp config/groups.example.yaml config/groups.yaml
 mkdir -p data/media-cache
 ```
 
-源码托管于 [douxiaohu/telegram-github-radar](https://github.com/douxiaohu/telegram-github-radar)。
+源码托管于 [douxiaohu/signal-loom](https://github.com/douxiaohu/signal-loom)。
 
 ### 2. 设置密钥
 

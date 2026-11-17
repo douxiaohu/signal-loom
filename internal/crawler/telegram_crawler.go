@@ -80,7 +80,7 @@ func (c *TelegramCrawler) fetch(ctx context.Context, pageURL string) (string, er
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; TelegramRadar/1.0; +https://github.com/douxiaohu/telegram-github-radar)")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; TelegramRadar/1.0; +https://github.com/douxiaohu/signal-loom)")
 
 	resp, err := c.client.Do(req)
 	if err != nil {

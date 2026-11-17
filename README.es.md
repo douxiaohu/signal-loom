@@ -150,8 +150,8 @@ Servidor, planificador y escritura SQLite comparten un proceso. Ejecuta **una so
 Necesitas Docker Engine, Compose y acceso a las páginas públicas de Telegram. La compilación también necesita acceso a npm, módulos Go e imágenes base.
 
 ```bash
-git clone https://github.com/douxiaohu/telegram-github-radar.git
-cd telegram-github-radar
+git clone https://github.com/douxiaohu/signal-loom.git
+cd signal-loom
 cp .env.example .env
 cp config/groups.example.yaml config/groups.yaml
 mkdir -p data/media-cache

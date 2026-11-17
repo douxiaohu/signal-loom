@@ -165,8 +165,8 @@ Run **one application instance per database**. The server, scheduler and SQLite 
 Install Docker Engine and Compose. The server must reach Telegram public pages; building requires access to npm, Go modules and base images.
 
 ```bash
-git clone https://github.com/douxiaohu/telegram-github-radar.git
-cd telegram-github-radar
+git clone https://github.com/douxiaohu/signal-loom.git
+cd signal-loom
 cp .env.example .env
 cp config/groups.example.yaml config/groups.yaml
 mkdir -p data/media-cache
