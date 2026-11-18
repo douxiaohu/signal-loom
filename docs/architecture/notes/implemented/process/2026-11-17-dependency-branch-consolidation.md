@@ -16,6 +16,8 @@ Status: implemented
 
 浏览器 CI 在 build 完成后使用 preview 检查真正的生产分块，而不只检查开发服务；本地默认命令仍支持开发服务回归。GitHub Actions 统一使用新版组件，并补齐 setup-python。SQLite 使用 1.62.0，保留现有 schema 与迁移逻辑。后续非破坏性 npm/Go 更新分组，Actions 更新合并为一组；npm/Go 跨大版本更新仍单独审查，避免同时积累大量独立小更新分支。
 
+picomatch 后续公告的临时源码修补与语法边界由[重复 extglob 修补决定](../bug-fix/2026-11-18-picomatch-redos-containment.md)维护，安全测试在前端应用测试之前执行。
+
 ## Alternatives considered
 
 - 直接点击全部合并：步骤少，但不能解决 React 插件与构建器的配套关系，也不能证明组合结果通过测试，因此先在临时分支完成验证。

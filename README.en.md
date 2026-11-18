@@ -18,7 +18,7 @@ A self-hosted reading room for public Telegram channels, with complete images an
 
 </div>
 
-Next version: [v2.0.0 release preparation and upgrade notes](docs/releases/v2.0.0.md).
+Version notes: [v2.0.0 and upgrade guidance](docs/releases/v2.0.0.md).
 
 ![Signal Loom: a paper reading room with botanical illustrations](docs/images/reading-room.png)
 

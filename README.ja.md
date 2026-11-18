@@ -17,7 +17,7 @@
 
 </div>
 
-次のバージョン：[v2.0.0 のリリース準備・アップグレード案内（中国語・英語）](docs/releases/v2.0.0.md)。
+バージョン情報：[v2.0.0・アップグレード案内（中国語・英語）](docs/releases/v2.0.0.md)。
 
 ![Signal Loom：紙の質感と植物のイラストを使ったトップページ](docs/images/reading-room.png)
 

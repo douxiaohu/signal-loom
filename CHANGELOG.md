@@ -1,8 +1,14 @@
 # Changelog
 
-## v2.0.0 · Unreleased
+## v2.0.0 · 2026-11-18
 
-Release preparation for the current Go runtime and Signal Loom reading experience. This version includes operational changes from the Python-based v1.0.0; review the [release notes and upgrade guidance](docs/releases/v2.0.0.md) before upgrading. The entries below record implementation dates, not the publication date.
+The current Go runtime and Signal Loom reading experience. This version includes operational changes from the Python-based v1.0.0; review the [release notes and upgrade guidance](docs/releases/v2.0.0.md) before upgrading. The entries below record implementation dates.
+
+### 2026-11-18 · Security and release
+
+- Contained GHSA-fc5q-39xc-vjpf using a documented MIT-licensed local picomatch patch that rejects repeated extglobs before regex generation. No patched upstream release was available at review time.
+- Applied the patch to every build/test consumer and added independent security regressions, source provenance checks and a Docker build update. npm audit does not inspect local package contents; the regression checks separately verify the patch.
+- Added versioned release notes and upgrade guidance, and aligned four-language documentation with the current toolchain.
 
 ### 2026-11-17 · Dependency branch consolidation
 

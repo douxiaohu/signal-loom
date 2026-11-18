@@ -17,7 +17,7 @@ Una sala de lectura autohospedada para canales públicos de Telegram, con imáge
 
 </div>
 
-Próxima versión: [preparación de v2.0.0 y guía de actualización, en chino e inglés](docs/releases/v2.0.0.md).
+Notas de versión: [v2.0.0 y guía de actualización, en chino e inglés](docs/releases/v2.0.0.md).
 
 ![Signal Loom: sala de lectura con textura de papel e ilustraciones botánicas](docs/images/reading-room.png)
 

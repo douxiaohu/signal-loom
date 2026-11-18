@@ -21,7 +21,7 @@ Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图�
 
 </div>
 
-下一版本：[v2.0.0（待发布）与升级说明](docs/releases/v2.0.0.md)。
+版本说明：[v2.0.0 与升级指南](docs/releases/v2.0.0.md)。
 
 ![拾讯首页：纸张阅读室与植物插画](docs/images/reading-room.png)
 

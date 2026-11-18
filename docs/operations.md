@@ -42,6 +42,7 @@ go test -race ./...
 go vet ./...
 python3 -m unittest discover -s scripts/tests -v
 npm --prefix frontend ci
+npm --prefix frontend run test:security
 npm --prefix frontend test
 npm --prefix frontend run build
 E2E_PREVIEW=1 npm --prefix frontend run test:e2e

@@ -26,6 +26,8 @@
 
 ## 包管理器依赖
 
+构建与测试依赖 picomatch 使用本地安全修补副本（上游 4.0.7，MIT），原始版权与[许可](frontend/vendor/picomatch/LICENSE)保留。来源、补丁范围及恢复上游的条件见[副本说明](frontend/vendor/picomatch/README.md)。该副本不随浏览器或 Go 运行时分发。
+
 依赖版本由 [`go.mod`](go.mod)、[`go.sum`](go.sum)、[`frontend/package.json`](frontend/package.json)和 [`frontend/package-lock.json`](frontend/package-lock.json)记录。每个依赖保留其包内的版权与许可声明。
 
 前端直接依赖的许可包括 MIT（React、React DOM、Radix Slot、Tailwind CSS、clsx）、Apache-2.0（class-variance-authority）、ISC（Lucide）和 OFL-1.1（Geist）。本文件说明直接复用的代码与资源，不是所有传递依赖的法律审查报告。
