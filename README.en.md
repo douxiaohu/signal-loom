@@ -10,13 +10,15 @@ A self-hosted reading room for public Telegram channels, with complete images an
 
 ![Go 1.27.4+](https://img.shields.io/badge/Go-1.27.4%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-single_instance-526B44?style=flat-square&logo=sqlite&logoColor=white)
 [![MIT](https://img.shields.io/badge/License-MIT-526B44?style=flat-square)](LICENSE)
 
 [Live site](https://douxiaohu.duckdns.org) · [Quick start](#quick-start) · [Development](#local-development) · [Configuration](#configuration) · [Documentation](#documentation)
 
 </div>
+
+Version notes: [v2.0.0 and upgrade guidance](docs/releases/v2.0.0.md).
 
 ![Signal Loom: a paper reading room with botanical illustrations](docs/images/reading-room.png)
 
@@ -255,7 +257,7 @@ The Go runtime currently supports **`telegram_public` only**. Bot collection, lo
 
 ## Local development
 
-Use **Go 1.27.4+, Node.js 22.22.2+ and npm**. Python is not needed for the current runtime.
+Use **Go 1.27.4+ and npm**, with Node.js `^22.22.2 || ^24.15.0 || >=26.0.0`. Python is not needed for the current runtime.
 
 ```bash
 cp .env.example .env

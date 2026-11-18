@@ -35,16 +35,17 @@ python3 scripts/release.py backup \
 
 ## 构建可验证制品
 
-需要 Go 1.27.4+、Node.js 22.22.2+、Python 3.8+ 与经校验的 Gitleaks 8.30.1。先提交代码，保证发布版本对应明确的提交。
+需要 Go 1.27.4+、Python 3.8+ 与经校验的 Gitleaks 8.30.1；Node.js 支持范围为 `^22.22.2 || ^24.15.0 || >=26.0.0`。先提交代码，保证发布版本对应明确的提交。
 
 ```bash
 go test -race ./...
 go vet ./...
 python3 -m unittest discover -s scripts/tests -v
 npm --prefix frontend ci
+npm --prefix frontend run test:security
 npm --prefix frontend test
 npm --prefix frontend run build
-npm --prefix frontend run test:e2e
+E2E_PREVIEW=1 npm --prefix frontend run test:e2e
 bash scripts/install-gitleaks.sh
 mkdir -p bin outputs/releases
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \

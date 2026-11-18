@@ -1,6 +1,6 @@
 # Contributing · 贡献指南
 
-Signal Loom uses Go 1.27.4+, Node.js 22.22.2+ and Python 3.8+ for release tooling. The supported runtime is `cmd/server` + `internal/` + `frontend/`; `app/` and `tests/` retain the historical Python implementation.
+Signal Loom uses Go 1.27.4+, Node.js `^22.22.2 || ^24.15.0 || >=26.0.0` and Python 3.8+ for release tooling. The supported runtime is `cmd/server` + `internal/` + `frontend/`; `app/` and `tests/` retain the historical Python implementation.
 
 1. Describe the user-visible problem and keep the change focused. Behavioral or cross-module decisions belong in `docs/architecture/notes/` alongside the code.
 2. Keep public visibility checks consistent across lists, message permalinks and media. A private or disabled source must not become readable through saved IDs or direct links.
@@ -16,6 +16,7 @@ go vet ./...
 python3 -m unittest discover -s scripts/tests -v
 python3 scripts/check-docs.py
 npm --prefix frontend ci
+npm --prefix frontend run test:security
 npm --prefix frontend test
 npm --prefix frontend run build
 npm --prefix frontend run test:e2e

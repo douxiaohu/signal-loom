@@ -7,6 +7,7 @@ ARG GO_VERSION=1.27.4
 FROM node:22-alpine AS frontend-builder
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
+COPY frontend/vendor/picomatch ./vendor/picomatch
 RUN npm ci
 COPY frontend ./
 RUN npm run build
