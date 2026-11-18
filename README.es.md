@@ -17,6 +17,8 @@ Una sala de lectura autohospedada para canales públicos de Telegram, con imáge
 
 </div>
 
+Próxima versión: [preparación de v2.0.0 y guía de actualización, en chino e inglés](docs/releases/v2.0.0.md).
+
 ![Signal Loom: sala de lectura con textura de papel e ilustraciones botánicas](docs/images/reading-room.png)
 
 Signal Loom reúne publicaciones de canales públicos de Telegram en una página tranquila, ordenada por fecha. Go se encarga de la recopilación, los permisos y la caché de medios. React ofrece la lectura pública y un panel de administración independiente. SQLite simplifica el despliegue y los lectores no necesitan iniciar sesión.
@@ -236,7 +238,7 @@ El entorno Go admite actualmente **solo `telegram_public`**. La recopilación me
 
 ## Desarrollo local
 
-Usa **Go 1.27.4+, Node.js 22.22.2+ y npm**. Python no es necesario para ejecutar la versión actual. Prepara antes los archivos de configuración indicados arriba.
+Usa **Go 1.27.4+ y npm**, con Node.js `^22.22.2 || ^24.15.0 || >=26.0.0`. Python no es necesario para ejecutar la versión actual. Prepara antes los archivos de configuración indicados arriba.
 
 ```bash
 cd frontend

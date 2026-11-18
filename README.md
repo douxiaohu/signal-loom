@@ -12,7 +12,7 @@ Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图�
 
 ![Go 1.27.4+](https://img.shields.io/badge/Go-1.27.4%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-single_instance-526B44?style=flat-square&logo=sqlite&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-526B44?style=flat-square)](LICENSE)
@@ -20,6 +20,8 @@ Telegram 公开频道聚合 · 安静阅读 · 完整图片 · 长文与多图�
 [在线阅读](https://douxiaohu.duckdns.org) · [快速开始](#快速开始) · [本地开发](#本地开发) · [配置](#配置) · [文档导航](#文档导航)
 
 </div>
+
+下一版本：[v2.0.0（待发布）与升级说明](docs/releases/v2.0.0.md)。
 
 ![拾讯首页：纸张阅读室与植物插画](docs/images/reading-room.png)
 
@@ -291,7 +293,7 @@ groups:
 
 ## 本地开发
 
-需要 **Go 1.27.4+、Node.js 22.22.2+ 和 npm**。不需要 Python 来运行当前应用。
+需要 **Go 1.27.4+ 和 npm**；Node.js 支持范围为 `^22.22.2 || ^24.15.0 || >=26.0.0`。不需要 Python 来运行当前应用。
 
 ```bash
 cp .env.example .env
